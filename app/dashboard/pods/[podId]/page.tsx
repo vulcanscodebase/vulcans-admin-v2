@@ -16,6 +16,8 @@ import {
 } from "@/components/api/adminApi";
 import { toast } from "sonner";
 import PodUsersList from "@/components/dashboard/PodUsersList";
+import PodHierarchyTree from "@/components/dashboard/PodHierarchyTree";
+import CreateChildPodDialog from "@/components/dashboard/CreateChildPodDialog";
 
 export default function PodDetailPage() {
   const params = useParams();
@@ -28,6 +30,7 @@ export default function PodDetailPage() {
   const [hierarchy, setHierarchy] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "analytics" | "hierarchy">("overview");
   const [loading, setLoading] = useState(true);
+  const [showCreateChildPod, setShowCreateChildPod] = useState(false);
 
   useEffect(() => {
     loadPodData();
@@ -42,10 +45,12 @@ export default function PodDetailPage() {
         getPodHierarchy(podId).catch(() => null),
       ]);
 
-      setPod(podRes.data);
-      if (analyticsRes) setAnalytics(analyticsRes.data);
+      // API returns { pod: {...} }, so we need podRes.data.pod
+      setPod(podRes.data?.pod || podRes.data);
+      if (analyticsRes) setAnalytics(analyticsRes.data?.analytics || analyticsRes.data);
       if (hierarchyRes) setHierarchy(hierarchyRes.data);
     } catch (error: any) {
+      console.error("Error loading pod data:", error);
       toast.error(error.response?.data?.message || "Failed to load pod data");
     } finally {
       setLoading(false);
@@ -115,8 +120,21 @@ export default function PodDetailPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <h1 className="text-3xl font-bold text-foreground mb-2">{pod.name}</h1>
-            <p className="text-muted-foreground">{pod.email}</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground mb-2">{pod.name}</h1>
+                <p className="text-muted-foreground">{pod.associatedEmail || pod.email || "No email"}</p>
+              </div>
+              {isSuperAdmin && (
+                <Button
+                  onClick={() => setShowCreateChildPod(true)}
+                  className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
+                >
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Create Child Pod
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Tabs */}
@@ -159,18 +177,24 @@ export default function PodDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Email</p>
-                    <p className="text-lg">{pod.email}</p>
+                    <p className="text-lg">{pod.associatedEmail || pod.email || "N/A"}</p>
                   </div>
-                  {pod.instituteName && (
+                  {(pod.institutionName || pod.instituteName) && (
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Institute</p>
-                      <p className="text-lg">{pod.instituteName}</p>
+                      <p className="text-lg">{pod.institutionName || pod.instituteName}</p>
                     </div>
                   )}
                   {pod.organizationName && (
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Organization</p>
                       <p className="text-lg">{pod.organizationName}</p>
+                    </div>
+                  )}
+                  {pod.educationStatus && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Education Status</p>
+                      <p className="text-lg capitalize">{pod.educationStatus}</p>
                     </div>
                   )}
                   <div>
@@ -185,6 +209,28 @@ export default function PodDetailPage() {
                       {pod.isDeleted ? "Deleted" : "Active"}
                     </span>
                   </div>
+                  {pod.createdBy && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Created By</p>
+                      <p className="text-lg">
+                        {typeof pod.createdBy === "object" 
+                          ? pod.createdBy.name || pod.createdBy.email 
+                          : "N/A"}
+                      </p>
+                    </div>
+                  )}
+                  {pod.createdAt && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Created At</p>
+                      <p className="text-lg">
+                        {new Date(pod.createdAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -237,25 +283,23 @@ export default function PodDetailPage() {
           )}
 
           {activeTab === "hierarchy" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Pod Hierarchy</CardTitle>
-                <CardDescription>Parent-child relationships</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {hierarchy ? (
-                  <div className="space-y-2">
-                    <pre className="p-4 bg-muted rounded-lg overflow-auto">
-                      {JSON.stringify(hierarchy, null, 2)}
-                    </pre>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No hierarchy data available</p>
-                )}
-              </CardContent>
-            </Card>
+            <PodHierarchyTree hierarchy={hierarchy} currentPodId={podId} />
           )}
         </div>
+
+        {/* Create Child Pod Dialog */}
+        {showCreateChildPod && (
+          <CreateChildPodDialog
+            open={showCreateChildPod}
+            onClose={() => setShowCreateChildPod(false)}
+            onSuccess={() => {
+              setShowCreateChildPod(false);
+              loadPodData(); // Refresh data to show new child
+            }}
+            parentPodId={podId}
+            parentPodName={pod.name}
+          />
+        )}
       </main>
     </div>
   );

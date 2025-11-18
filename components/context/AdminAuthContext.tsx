@@ -63,11 +63,20 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
       if (newToken) {
         setToken(newToken);
         localStorage.setItem("adminToken", newToken);
+        // Also update admin data if returned
+        if (res.data.admin) {
+          setAdmin(res.data.admin);
+          localStorage.setItem("admin", JSON.stringify(res.data.admin));
+        }
         return newToken;
       }
       return null;
-    } catch (err) {
-      logout();
+    } catch (err: any) {
+      console.error("Refresh token error:", err);
+      // Only logout if it's a real auth error, not a network error
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        logout();
+      }
       return null;
     }
   };
@@ -94,6 +103,18 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
       if (accessToken) {
         setToken(accessToken);
         localStorage.setItem("adminToken", accessToken);
+      } else {
+        // If no token in response, try to get from cookies after a short delay
+        setTimeout(() => {
+          const cookieToken = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("accessToken="))
+            ?.split("=")[1];
+          if (cookieToken) {
+            setToken(cookieToken);
+            localStorage.setItem("adminToken", cookieToken);
+          }
+        }, 100);
       }
 
       const adminData = res.data.admin || res.data;
@@ -142,21 +163,40 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Initialize on mount
   useEffect(() => {
-    const localToken = localStorage.getItem("adminToken");
-    const localAdmin = localStorage.getItem("admin");
+    const initializeAuth = async () => {
+      const localToken = localStorage.getItem("adminToken");
+      const localAdmin = localStorage.getItem("admin");
 
-    if (localToken) {
-      setToken(localToken);
-      if (localAdmin) {
+      if (localToken) {
+        setToken(localToken);
+        if (localAdmin) {
+          try {
+            setAdmin(JSON.parse(localAdmin));
+          } catch (e) {
+            console.error("Error parsing admin data:", e);
+          }
+        }
+        // Try to get current admin, if fails, try refresh token
         try {
-          setAdmin(JSON.parse(localAdmin));
-        } catch (e) {
-          console.error("Error parsing admin data:", e);
+          await getAdmin();
+        } catch (err) {
+          // If getAdmin fails, try refreshing token
+          console.log("getAdmin failed, attempting token refresh...");
+          const newToken = await refreshToken();
+          if (newToken) {
+            // Retry getAdmin after refresh
+            try {
+              await getAdmin();
+            } catch (e) {
+              console.error("Failed after token refresh:", e);
+            }
+          }
         }
       }
-      getAdmin();
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   return (

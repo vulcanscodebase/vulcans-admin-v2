@@ -2,8 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Building2, Users, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Building2, Users, BarChart3, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminAuth } from "@/components/context/AdminAuthContext";
 
 interface SidebarItem {
   href: string;
@@ -19,14 +20,24 @@ const sidebarItems: SidebarItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/pods", label: "Pods", icon: Building2 },
   { href: "/dashboard/admins", label: "Admins", icon: Users },
+  { href: "/dashboard/pods/bin", label: "Pod Bin", icon: Trash2 },
 ];
 
 export default function AdminSidebar({ onLinkClick }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { isSuperAdmin } = useAdminAuth();
 
   return (
     <nav className="p-4 space-y-1">
         {sidebarItems.map((item) => {
+          // Hide Pod Bin and Admins for regular admins (but show Pods)
+          if (!isSuperAdmin && (
+            item.href === "/dashboard/pods/bin" ||
+            item.href === "/dashboard/admins"
+          )) {
+            return null;
+          }
+
           const Icon = item.icon;
           const isActive =
             pathname === item.href || pathname?.startsWith(item.href + "/");

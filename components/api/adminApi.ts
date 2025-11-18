@@ -30,11 +30,13 @@ export const setupAdminInterceptors = (
     async (error) => {
       const originalRequest = error.config;
 
+      // Handle 401 errors with token refresh
       if (
         error.response?.status === 401 &&
         !originalRequest._retry &&
         !originalRequest.url?.includes("/refresh-token") &&
-        !originalRequest.url?.includes("/logout")
+        !originalRequest.url?.includes("/logout") &&
+        !originalRequest.url?.includes("/login")
       ) {
         originalRequest._retry = true;
 
@@ -42,12 +44,22 @@ export const setupAdminInterceptors = (
           const token = await refreshToken();
           if (token) {
             originalRequest.headers.Authorization = `Bearer ${token}`;
+            // Retry the original request with new token
             return adminApiClient(originalRequest);
+          } else {
+            // Refresh failed, redirect to login
+            throw new Error("Token refresh failed");
           }
         } catch (refreshError) {
           console.error("Token refresh failed:", refreshError);
+          // Clear tokens and redirect
           localStorage.removeItem("adminToken");
-          window.location.href = "/login";
+          localStorage.removeItem("admin");
+          // Only redirect if we're not already on login page
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
+          return Promise.reject(refreshError);
         }
       }
       return Promise.reject(error);
@@ -64,7 +76,9 @@ export const adminLogout = () => adminApiClient.post("/admin/logout");
 export const getCurrentAdmin = () => adminApiClient.get("/admin/me");
 
 export const adminRefreshToken = () =>
-  adminApiClient.post("/admin/refresh-token");
+  adminApiClient.post("/admin/refresh-token", {}, {
+    withCredentials: true, // Ensure cookies are sent
+  });
 
 export const adminSetupPassword = (data: { token: string; password: string }) =>
   adminApiClient.post("/admin/setup-password", data);
@@ -93,6 +107,8 @@ export const createPod = (data: {
 }) => adminApiClient.post("/pods/create", data);
 
 export const getAllPods = () => adminApiClient.get("/pods/all");
+
+export const getDeletedPods = () => adminApiClient.get("/pods/all?includeDeleted=true");
 
 export const getPodById = (podId: string) =>
   adminApiClient.get(`/pods/${podId}`);
@@ -146,6 +162,9 @@ export const softDeletePod = (podId: string) =>
 
 export const restorePod = (podId: string) =>
   adminApiClient.patch(`/pods/${podId}/restore`);
+
+export const permanentlyDeletePod = (podId: string) =>
+  adminApiClient.delete(`/pods/${podId}/permanent-delete`);
 
 export const getPodHierarchy = (podId: string) =>
   adminApiClient.get(`/pods/${podId}/hierarchy`);

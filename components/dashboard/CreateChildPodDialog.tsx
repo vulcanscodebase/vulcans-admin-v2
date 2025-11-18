@@ -14,13 +14,21 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 
-interface CreatePodDialogProps {
+interface CreateChildPodDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  parentPodId: string;
+  parentPodName: string;
 }
 
-export default function CreatePodDialog({ open, onClose, onSuccess }: CreatePodDialogProps) {
+export default function CreateChildPodDialog({
+  open,
+  onClose,
+  onSuccess,
+  parentPodId,
+  parentPodName,
+}: CreateChildPodDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     type: "institution",
@@ -36,8 +44,11 @@ export default function CreatePodDialog({ open, onClose, onSuccess }: CreatePodD
     setLoading(true);
 
     try {
-      await createPod(formData);
-      toast.success("Pod created successfully!");
+      await createPod({
+        ...formData,
+        parentPodId, // Automatically set the parent
+      });
+      toast.success("Child pod created successfully!");
       // Reset form
       setFormData({
         name: "",
@@ -50,7 +61,7 @@ export default function CreatePodDialog({ open, onClose, onSuccess }: CreatePodD
       onClose();
       onSuccess?.();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to create pod");
+      toast.error(error.response?.data?.message || "Failed to create child pod");
     } finally {
       setLoading(false);
     }
@@ -62,11 +73,19 @@ export default function CreatePodDialog({ open, onClose, onSuccess }: CreatePodD
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader>
-          <CardTitle>Create New Root Pod</CardTitle>
-          <CardDescription>Create a new root pod/group in the system. To create child pods, navigate into a pod and create from there.</CardDescription>
+          <CardTitle>Create Child Pod</CardTitle>
+          <CardDescription>
+            Create a new child pod under <strong>{parentPodName}</strong>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="p-3 bg-muted rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>Parent Pod:</strong> {parentPodName}
+              </p>
+            </div>
+
             <div>
               <Label htmlFor="name">Pod Name *</Label>
               <Input
@@ -149,7 +168,7 @@ export default function CreatePodDialog({ open, onClose, onSuccess }: CreatePodD
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Creating..." : "Create Pod"}
+                {loading ? "Creating..." : "Create Child Pod"}
               </Button>
               <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
                 Cancel

@@ -19,16 +19,14 @@ export default function PodsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error("Access denied. Super admin only.");
-      return;
-    }
     loadPods();
   }, [isSuperAdmin]);
 
   const loadPods = async () => {
     try {
       setLoading(true);
+      // getAllPods automatically filters by admin via JWT token
+      // Super admins see all pods, regular admins see only their pods
       const res = await getAllPods();
       setPods(res.data?.pods || []);
     } catch (error: any) {
@@ -43,19 +41,6 @@ export default function PodsPage() {
     loadPods();
   };
 
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>This page is only accessible to super admins.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AdminNavbar />
@@ -67,37 +52,54 @@ export default function PodsPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">All Pods</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {isSuperAdmin ? "All Pods" : "My Pods"}
+              </h1>
               <p className="text-muted-foreground">
-                Manage and monitor all pods in the system
+                {isSuperAdmin 
+                  ? "Manage and monitor all pods in the system"
+                  : "View and manage your assigned pods"}
               </p>
             </div>
-            <Button
-              onClick={() => setShowCreatePod(true)}
-              className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Pod
-            </Button>
+            {isSuperAdmin && (
+              <Button
+                onClick={() => setShowCreatePod(true)}
+                className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Pod
+              </Button>
+            )}
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Pod Management</CardTitle>
+              <CardTitle>{isSuperAdmin ? "Pod Management" : "My Pods"}</CardTitle>
               <CardDescription>
-                View, edit, delete, and manage all pods
+                {isSuperAdmin 
+                  ? "View, edit, delete, and manage all pods"
+                  : "View and manage your assigned pods"}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">Loading pods...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-vulcan-accent-blue mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Loading pods...</p>
+                </div>
+              ) : pods.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    {isSuperAdmin ? "No pods found." : "You don't have any pods assigned."}
+                  </p>
+                </div>
               ) : (
-                <PodsTable pods={pods} onRefresh={loadPods} />
+                <PodsTable pods={pods} onRefresh={loadPods} isSuperAdmin={isSuperAdmin} />
               )}
             </CardContent>
           </Card>
 
-          {showCreatePod && (
+          {showCreatePod && isSuperAdmin && (
             <CreatePodDialog
               open={showCreatePod}
               onClose={() => setShowCreatePod(false)}
