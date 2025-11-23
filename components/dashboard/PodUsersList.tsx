@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 interface PodUsersListProps {
   podId: string;
@@ -126,7 +127,9 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
                   variant="destructive"
                   size="sm"
                   onClick={() => handleDeleteUser(user._id)}
+                  className="bg-red-600 hover:bg-red-700 text-white"
                 >
+                  <Trash2 className="h-4 w-4 mr-1" />
                   Delete
                 </Button>
               </div>
