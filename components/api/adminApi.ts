@@ -169,3 +169,43 @@ export const permanentlyDeletePod = (podId: string) =>
 export const getPodHierarchy = (podId: string) =>
   adminApiClient.get(`/pods/${podId}/hierarchy`);
 
+// Interview Report APIs
+export const getAllInterviewReports = (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  podId?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+  if (params?.status) queryParams.append("status", params.status);
+  if (params?.podId) queryParams.append("podId", params.podId);
+  return adminApiClient.get(`/interviews/admin/all-reports?${queryParams.toString()}`);
+};
+
+export const getPodInterviewReports = (podId: string, params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}) => {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+  if (params?.status) queryParams.append("status", params.status);
+  return adminApiClient.get(`/interviews/pod/${podId}/reports?${queryParams.toString()}`);
+};
+
+export const getPodInterviewStatistics = () =>
+  adminApiClient.get("/interviews/admin/pod-statistics");
+
+export const getInterviewDetails = (interviewId: string) =>
+  adminApiClient.get(`/interviews/${interviewId}`);
+
+// Pod License Management APIs
+export const setPodLicenses = (podId: string, totalLicenses: number) =>
+  adminApiClient.put(`/pods/${podId}/licenses/set`, { totalLicenses });
+
+export const addLicensesToPod = (podId: string, amount: number) =>
+  adminApiClient.post(`/pods/${podId}/licenses/add`, { amount });
+
