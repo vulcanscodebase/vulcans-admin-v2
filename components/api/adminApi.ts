@@ -209,3 +209,20 @@ export const setPodLicenses = (podId: string, totalLicenses: number) =>
 export const addLicensesToPod = (podId: string, amount: number) =>
   adminApiClient.post(`/pods/${podId}/licenses/add`, { amount });
 
+// Super Admin Mass Upload APIs
+export const massUploadPreview = (file: File) => {
+  const formData = new FormData();
+  formData.append("excel", file);
+  return adminApiClient.post("/admin/mass-upload-preview", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+export const massUploadUsers = (file: File) => {
+  const formData = new FormData();
+  formData.append("excel", file);
+  return adminApiClient.post("/admin/mass-upload-users", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+

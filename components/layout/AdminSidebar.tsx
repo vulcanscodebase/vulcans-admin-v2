@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Building2, Users, BarChart3, Trash2, FileText } from "lucide-react";
+import { LayoutDashboard, Building2, Users, BarChart3, Trash2, FileText, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/components/context/AdminAuthContext";
 
@@ -20,6 +20,7 @@ const sidebarItems: SidebarItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/pods", label: "Pods", icon: Building2 },
   { href: "/dashboard/interview-reports", label: "Interview Reports", icon: FileText },
+  { href: "/dashboard/mass-upload", label: "Mass Upload", icon: Upload },
   { href: "/dashboard/admins", label: "Admins", icon: Users },
   { href: "/dashboard/pods/bin", label: "Pod Bin", icon: Trash2 },
 ];
@@ -31,10 +32,11 @@ export default function AdminSidebar({ onLinkClick }: AdminSidebarProps) {
   return (
     <nav className="p-4 space-y-1">
         {sidebarItems.map((item) => {
-          // Hide Pod Bin and Admins for regular admins (but show Pods)
+          // Hide Pod Bin, Mass Upload and Admins for regular admins (but show Pods)
           if (!isSuperAdmin && (
             item.href === "/dashboard/pods/bin" ||
-            item.href === "/dashboard/admins"
+            item.href === "/dashboard/admins" ||
+            item.href === "/dashboard/mass-upload"
           )) {
             return null;
           }
