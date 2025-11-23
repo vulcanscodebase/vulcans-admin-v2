@@ -7,7 +7,7 @@ import AdminNavbar from "@/components/layout/AdminNavbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, BarChart3, Building2 } from "lucide-react";
+import { ArrowLeft, Users, BarChart3, Building2, Award } from "lucide-react";
 import {
   getPodById,
   getPodUsers,
@@ -16,6 +16,7 @@ import {
 } from "@/components/api/adminApi";
 import { toast } from "sonner";
 import PodUsersList from "@/components/dashboard/PodUsersList";
+import PodLicenseManagement from "@/components/dashboard/PodLicenseManagement";
 
 export default function PodDetailPage() {
   const params = useParams();
@@ -26,7 +27,7 @@ export default function PodDetailPage() {
   const [pod, setPod] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [hierarchy, setHierarchy] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "analytics" | "hierarchy">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "analytics" | "hierarchy" | "licenses">("overview");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export default function PodDetailPage() {
   const tabs = [
     { id: "overview", label: "Overview", icon: Building2 },
     { id: "users", label: "Users", icon: Users },
+    ...(isSuperAdmin ? [{ id: "licenses", label: "Licenses", icon: Award }] : []),
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "hierarchy", label: "Hierarchy", icon: Building2 },
   ];
@@ -202,6 +204,17 @@ export default function PodDetailPage() {
           )}
 
           {activeTab === "users" && <PodUsersList podId={podId} />}
+
+          {activeTab === "licenses" && isSuperAdmin && (
+            <PodLicenseManagement
+              podId={podId}
+              podName={pod.name}
+              totalLicenses={pod.totalLicenses || 0}
+              assignedLicenses={pod.assignedLicenses || 0}
+              availableLicenses={pod.availableLicenses || 0}
+              onUpdate={loadPodData}
+            />
+          )}
 
           {activeTab === "analytics" && (
             <Card>

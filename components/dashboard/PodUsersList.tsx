@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPodUsers, addPodUser, deletePodUser } from "@/components/api/adminApi";
+import { getPodUsers, addPodUser, deletePodUser, getPodById } from "@/components/api/adminApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Award } from "lucide-react";
 
 interface PodUsersListProps {
   podId: string;
@@ -23,10 +23,13 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
     email: "",
     qualification: "",
     dob: "",
+    licenses: 0,
   });
+  const [podInfo, setPodInfo] = useState<any>(null);
 
   useEffect(() => {
     loadUsers();
+    loadPodInfo();
   }, [podId, page]);
 
   const loadUsers = async () => {
@@ -41,13 +44,22 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
     }
   };
 
+  const loadPodInfo = async () => {
+    try {
+      const res = await getPodById(podId);
+      setPodInfo(res.data?.pod || null);
+    } catch (error: any) {
+      console.error("Failed to load pod info:", error);
+    }
+  };
+
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await addPodUser(podId, newUser);
       toast.success("User added successfully!");
       setShowAddUser(false);
-      setNewUser({ name: "", email: "", qualification: "", dob: "" });
+      setNewUser({ name: "", email: "", qualification: "", dob: "", licenses: 0 });
       loadUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to add user");
@@ -73,6 +85,20 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
           <div>
             <CardTitle>Pod Users</CardTitle>
             <CardDescription>Manage users in this pod</CardDescription>
+            {podInfo && (
+              <div className="mt-2 flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <Award className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium">Pod Licenses:</span>
+                  <span className="text-green-600 font-semibold">
+                    {podInfo.availableLicenses || 0} available
+                  </span>
+                  <span className="text-gray-500">
+                    / {podInfo.totalLicenses || 0} total
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           <Button onClick={() => setShowAddUser(true)}>Add User</Button>
         </div>
@@ -99,8 +125,30 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
                 required
               />
             </div>
+            <div>
+              <Label htmlFor="qualification">Qualification</Label>
+              <Input
+                id="qualification"
+                value={newUser.qualification}
+                onChange={(e) => setNewUser({ ...newUser, qualification: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="licenses">Interview Licenses *</Label>
+              <Input
+                id="licenses"
+                type="number"
+                min="0"
+                value={newUser.licenses}
+                onChange={(e) => setNewUser({ ...newUser, licenses: parseInt(e.target.value) || 0 })}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Number of interviews this user can take
+              </p>
+            </div>
             <div className="flex gap-2">
-              <Button type="submit">Add</Button>
+              <Button type="submit">Add User</Button>
               <Button type="button" variant="outline" onClick={() => setShowAddUser(false)}>
                 Cancel
               </Button>

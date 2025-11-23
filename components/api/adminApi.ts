@@ -72,6 +72,9 @@ export const adminSetupPassword = (data: { token: string; password: string }) =>
 // Admin Management APIs
 export const getAllAdmins = () => adminApiClient.get("/admin/");
 
+export const deleteAdmin = (adminId: string) =>
+  adminApiClient.delete(`/admin/${adminId}`);
+
 export const createAdmin = (data: { name: string; email: string; roleId: string }) =>
   adminApiClient.post("/admin/create-user", data);
 
@@ -111,6 +114,7 @@ export const addPodUser = (podId: string, data: {
   email: string;
   qualification?: string;
   dob?: string;
+  licenses?: number;
 }) => adminApiClient.post(`/pods/${podId}/add-user`, data);
 
 export const deletePodUser = (podId: string, userId: string) =>

@@ -6,8 +6,8 @@ import AdminNavbar from "@/components/layout/AdminNavbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { getAllAdmins } from "@/components/api/adminApi";
+import { Plus, Trash2 } from "lucide-react";
+import { getAllAdmins, deleteAdmin } from "@/components/api/adminApi";
 import { toast } from "sonner";
 
 export default function AdminsPage() {
@@ -32,6 +32,20 @@ export default function AdminsPage() {
       toast.error(error.response?.data?.message || "Failed to load admins");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string, adminName: string) => {
+    if (!confirm(`Are you sure you want to delete admin "${adminName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteAdmin(adminId);
+      toast.success(`Admin "${adminName}" deleted successfully!`);
+      loadAdmins(); // Reload the list
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete admin");
     }
   };
 
@@ -109,6 +123,17 @@ export default function AdminsPage() {
                         <Button variant="outline" size="sm">
                           View Details
                         </Button>
+                        {!admin.isSuperAdmin && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteAdmin(admin._id || admin.id, admin.name)}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
