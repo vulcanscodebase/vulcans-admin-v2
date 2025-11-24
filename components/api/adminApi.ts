@@ -197,3 +197,6 @@ export const getAllInterviewReports = (page = 1, limit = 50, status?: string, po
 export const getInterviewById = (interviewId: string) =>
   adminApiClient.get(`/interviews/${interviewId}`);
 
+export const deleteInterview = (interviewId: string) =>
+  adminApiClient.delete(`/interviews/${interviewId}`);
+

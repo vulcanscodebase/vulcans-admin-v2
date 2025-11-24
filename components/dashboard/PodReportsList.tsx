@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getPodInterviewReports, getInterviewById } from "@/components/api/adminApi";
+import { getPodInterviewReports, getInterviewById, deleteInterview } from "@/components/api/adminApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Eye, Download, Calendar, User, Briefcase, CheckCircle, Clock } from "lucide-react";
+import { Eye, Download, Calendar, User, Briefcase, CheckCircle, Clock, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface PodReportsListProps {
@@ -88,6 +88,20 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
 
   const handleViewDetails = (interviewId: string) => {
     router.push(`/dashboard/reports/${interviewId}`);
+  };
+
+  const handleDeleteInterview = async (interviewId: string, jobRole: string) => {
+    if (!confirm(`Are you sure you want to delete this interview for "${jobRole}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteInterview(interviewId);
+      toast.success("Interview deleted successfully!");
+      loadReports();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete interview");
+    }
   };
 
   if (loading) {
@@ -192,9 +206,20 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleViewDetails(interview._id)}
+                      disabled={interview.status !== "completed"}
+                      title={interview.status !== "completed" ? "View is only available for completed interviews" : "View interview details"}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteInterview(interview._id, interview.jobRole || "General Interview")}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
                     </Button>
                   </div>
                 </div>
