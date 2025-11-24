@@ -7,8 +7,8 @@ import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, User, Award, CheckCircle, XCircle } from "lucide-react";
-import { getAllUsers } from "@/components/api/adminApi";
+import { Search, Mail, User, Award, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { getAllUsers, deleteUser } from "@/components/api/adminApi";
 import { toast } from "sonner";
 
 export default function UsersPage() {
@@ -53,6 +53,31 @@ export default function UsersPage() {
     e.preventDefault();
     setPage(1);
     loadUsers();
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!userId) {
+      toast.error("Invalid user ID");
+      return;
+    }
+
+    const confirmMessage = `⚠️ WARNING: This will PERMANENTLY delete the user "${userName}".\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`;
+    const userInput = prompt(confirmMessage);
+    
+    if (userInput !== "DELETE") {
+      toast.info("User deletion cancelled");
+      return;
+    }
+
+    try {
+      await deleteUser(userId);
+      toast.success(`User "${userName}" deleted successfully!`);
+      loadUsers(); // Reload the list
+    } catch (error: any) {
+      console.error("Delete user error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to delete user";
+      toast.error(errorMessage);
+    }
   };
 
   if (!isSuperAdmin) {
@@ -174,6 +199,9 @@ export default function UsersPage() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Joined
                           </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Actions
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-card divide-y divide-border">
@@ -240,6 +268,17 @@ export default function UsersPage() {
                               {user.createdAt
                                 ? new Date(user.createdAt).toLocaleDateString()
                                 : "N/A"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user._id || user.id, user.name)}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
                             </td>
                           </tr>
                         ))}

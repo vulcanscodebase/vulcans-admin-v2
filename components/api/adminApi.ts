@@ -84,6 +84,9 @@ export const getAllUsers = (page = 1, limit = 50, search?: string, verified?: bo
   return adminApiClient.get(`/admin/users?${params.toString()}`);
 };
 
+export const deleteUser = (userId: string) =>
+  adminApiClient.delete(`/admin/users/${userId}`);
+
 export const createAdmin = (data: { name: string; email: string; roleId: string }) =>
   adminApiClient.post("/admin/create-user", data);
 
