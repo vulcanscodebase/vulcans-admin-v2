@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Award, Plus, Settings } from "lucide-react";
-import adminApiClient from "@/components/api/adminApiClient";
+import { adminApiClient } from "@/components/api/adminApi";
 
 interface PodLicenseManagementProps {
   podId: string;
