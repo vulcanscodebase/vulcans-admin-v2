@@ -15,7 +15,6 @@ import {
   getPodHierarchy,
   permanentlyDeletePod,
 } from "@/components/api/adminApi";
-import { Award } from "lucide-react";
 import { toast } from "sonner";
 import PodUsersList from "@/components/dashboard/PodUsersList";
 import PodLicenseManagement from "@/components/dashboard/PodLicenseManagement";
