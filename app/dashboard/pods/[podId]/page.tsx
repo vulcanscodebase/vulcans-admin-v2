@@ -7,7 +7,7 @@ import AdminNavbar from "@/components/layout/AdminNavbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, BarChart3, Building2, Award, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, BarChart3, Building2, Award, Trash2, FileText } from "lucide-react";
 import {
   getPodById,
   getPodUsers,
@@ -15,9 +15,11 @@ import {
   getPodHierarchy,
   permanentlyDeletePod,
 } from "@/components/api/adminApi";
+import { Award } from "lucide-react";
 import { toast } from "sonner";
 import PodUsersList from "@/components/dashboard/PodUsersList";
 import PodLicenseManagement from "@/components/dashboard/PodLicenseManagement";
+import PodReportsList from "@/components/dashboard/PodReportsList";
 
 export default function PodDetailPage() {
   const params = useParams();
@@ -28,12 +30,13 @@ export default function PodDetailPage() {
   const [pod, setPod] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [hierarchy, setHierarchy] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "analytics" | "hierarchy" | "licenses">("overview");
+  const [totalRemainingInterviews, setTotalRemainingInterviews] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "analytics" | "hierarchy" | "licenses" | "reports">("overview");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPodData();
-  }, [podId]);
+  }, [podId, isSuperAdmin]);
 
   const loadPodData = async () => {
     try {
@@ -47,6 +50,38 @@ export default function PodDetailPage() {
       setPod(podRes.data);
       if (analyticsRes) setAnalytics(analyticsRes.data);
       if (hierarchyRes) setHierarchy(hierarchyRes.data);
+
+      // Calculate total remaining interviews for all users in pod
+      if (isSuperAdmin) {
+        try {
+          let allUsers: any[] = [];
+          let currentPage = 1;
+          let hasMore = true;
+
+          // Fetch all users (paginated)
+          while (hasMore) {
+            const usersRes = await getPodUsers(podId, currentPage, 100);
+            const users = usersRes.data?.users || [];
+            allUsers = [...allUsers, ...users];
+            
+            const totalPages = usersRes.data?.totalPages || 1;
+            if (currentPage >= totalPages) {
+              hasMore = false;
+            } else {
+              currentPage++;
+            }
+          }
+
+          // Calculate total remaining interviews
+          const totalRemaining = allUsers.reduce((sum, user) => {
+            return sum + (user.licenses || 0);
+          }, 0);
+
+          setTotalRemainingInterviews(totalRemaining);
+        } catch (error) {
+          console.error("Error calculating total remaining interviews:", error);
+        }
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load pod data");
     } finally {
@@ -114,6 +149,7 @@ export default function PodDetailPage() {
   const tabs = [
     { id: "overview", label: "Overview", icon: Building2 },
     { id: "users", label: "Users", icon: Users },
+    { id: "reports", label: "Reports", icon: FileText },
     ...(isSuperAdmin ? [{ id: "licenses", label: "Licenses", icon: Award }] : []),
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "hierarchy", label: "Hierarchy", icon: Building2 },
@@ -222,6 +258,44 @@ export default function PodDetailPage() {
                 </CardContent>
               </Card>
 
+              {/* Total Remaining Interviews Card (Super Admin Only) */}
+              {isSuperAdmin && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-blue-600" />
+                      Total Remaining Interviews
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-center py-4">
+                      <div className="text-center">
+                        <p className="text-4xl font-bold text-blue-600 mb-2">
+                          {totalRemainingInterviews}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Total remaining interviews across all users in this pod
+                        </p>
+                      </div>
+                    </div>
+                    {pod.totalLicenses !== undefined && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Pod License Pool</p>
+                            <p className="font-semibold">{pod.totalLicenses || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Assigned to Users</p>
+                            <p className="font-semibold">{pod.assignedLicenses || 0}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {pod.parentPodId && (
                 <Card>
                   <CardHeader>
@@ -236,6 +310,8 @@ export default function PodDetailPage() {
           )}
 
           {activeTab === "users" && <PodUsersList podId={podId} />}
+
+          {activeTab === "reports" && <PodReportsList podId={podId} />}
 
           {activeTab === "licenses" && isSuperAdmin && (
             <PodLicenseManagement

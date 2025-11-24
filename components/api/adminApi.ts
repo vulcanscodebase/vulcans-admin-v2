@@ -176,3 +176,24 @@ export const permanentlyDeletePod = (podId: string) =>
 export const getPodHierarchy = (podId: string) =>
   adminApiClient.get(`/pods/${podId}/hierarchy`);
 
+// Interview Reports API
+export const getPodInterviewReports = (podId: string, page = 1, limit = 50, status?: string) => {
+  const params = new URLSearchParams();
+  params.append("page", page.toString());
+  params.append("limit", limit.toString());
+  if (status) params.append("status", status);
+  return adminApiClient.get(`/interviews/pod/${podId}/reports?${params.toString()}`);
+};
+
+export const getAllInterviewReports = (page = 1, limit = 50, status?: string, podId?: string) => {
+  const params = new URLSearchParams();
+  params.append("page", page.toString());
+  params.append("limit", limit.toString());
+  if (status) params.append("status", status);
+  if (podId) params.append("podId", podId);
+  return adminApiClient.get(`/interviews/admin/all-reports?${params.toString()}`);
+};
+
+export const getInterviewById = (interviewId: string) =>
+  adminApiClient.get(`/interviews/${interviewId}`);
+

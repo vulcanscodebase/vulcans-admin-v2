@@ -440,21 +440,37 @@ Bob Wilson,EMP001,bob@example.com,3`;
             {users.map((user) => (
               <div
                 key={user._id}
-                className="flex justify-between items-center p-3 border rounded-lg"
+                className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors"
               >
-                <div>
-                  <p className="font-medium">{user.name}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {/* Remaining Licenses Display */}
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="text-sm">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Remaining:</span>
+                          <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400">
+                            {user.licenses || 0}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user._id)}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteUser(user._id)}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
               </div>
             ))}
           </div>

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Building2, Users, BarChart3, UserCircle } from "lucide-react";
+import { LayoutDashboard, Building2, Users, BarChart3, UserCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth } from "@/components/context/AdminAuthContext";
 
@@ -22,6 +22,7 @@ const sidebarItems: SidebarItem[] = [
   { href: "/dashboard/pods", label: "Pods", icon: Building2 },
   { href: "/dashboard/admins", label: "Admins", icon: Users },
   { href: "/dashboard/users", label: "All Users", icon: UserCircle, superAdminOnly: true },
+  { href: "/dashboard/reports", label: "Interview Reports", icon: FileText },
 ];
 
 export default function AdminSidebar({ onLinkClick }: AdminSidebarProps) {
