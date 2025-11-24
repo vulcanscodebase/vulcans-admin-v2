@@ -73,11 +73,17 @@ export default function PodsTable({ pods, onRefresh }: PodsTableProps) {
     router.push(`/dashboard/pods/${podId}/analytics`);
   };
 
+  const showingDeleted = pods.length > 0 && pods[0]?.isDeleted;
+
   if (filteredPods.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">
-          {searchTerm ? "No pods found matching your search." : "No pods found. Create your first pod to get started."}
+          {searchTerm
+            ? "No pods found matching your search."
+            : showingDeleted
+            ? "Pod Bin is empty. No deleted pods."
+            : "No pods found. Create your first pod to get started."}
         </p>
       </div>
     );

@@ -6,7 +6,7 @@ import AdminNavbar from "@/components/layout/AdminNavbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, Building2 } from "lucide-react";
 import { getAllPods } from "@/components/api/adminApi";
 import { toast } from "sonner";
 import CreatePodDialog from "@/components/dashboard/CreatePodDialog";
@@ -17,6 +17,7 @@ export default function PodsPage() {
   const [showCreatePod, setShowCreatePod] = useState(false);
   const [pods, setPods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"active" | "deleted">("active");
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -72,13 +73,15 @@ export default function PodsPage() {
                 Manage and monitor all pods in the system
               </p>
             </div>
-            <Button
-              onClick={() => setShowCreatePod(true)}
-              className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Pod
-            </Button>
+            {activeTab === "active" && (
+              <Button
+                onClick={() => setShowCreatePod(true)}
+                className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Pod
+              </Button>
+            )}
           </div>
 
           <Card>
@@ -89,10 +92,51 @@ export default function PodsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Tabs */}
+              <div className="border-b mb-6">
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => setActiveTab("active")}
+                    className={`px-4 py-2 border-b-2 transition-colors flex items-center gap-2 ${
+                      activeTab === "active"
+                        ? "border-vulcan-accent-blue text-vulcan-accent-blue"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Building2 className="h-4 w-4" />
+                    <span>Active Pods</span>
+                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {pods.filter((p) => !p.isDeleted).length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("deleted")}
+                    className={`px-4 py-2 border-b-2 transition-colors flex items-center gap-2 ${
+                      activeTab === "deleted"
+                        ? "border-vulcan-accent-blue text-vulcan-accent-blue"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Pod Bin</span>
+                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                      {pods.filter((p) => p.isDeleted).length}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {loading ? (
                 <div className="text-center py-8">Loading pods...</div>
               ) : (
-                <PodsTable pods={pods} onRefresh={loadPods} />
+                <PodsTable
+                  pods={
+                    activeTab === "active"
+                      ? pods.filter((p) => !p.isDeleted)
+                      : pods.filter((p) => p.isDeleted)
+                  }
+                  onRefresh={loadPods}
+                />
               )}
             </CardContent>
           </Card>
