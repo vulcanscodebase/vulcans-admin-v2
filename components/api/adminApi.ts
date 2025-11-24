@@ -95,7 +95,14 @@ export const createPod = (data: {
   parentPodId?: string;
 }) => adminApiClient.post("/pods/create", data);
 
-export const getAllPods = () => adminApiClient.get("/pods/all");
+export const getAllPods = (includeDeleted?: boolean) => {
+  const params = new URLSearchParams();
+  if (includeDeleted) {
+    params.append("includeDeleted", "true");
+  }
+  const queryString = params.toString();
+  return adminApiClient.get(`/pods/all${queryString ? `?${queryString}` : ""}`);
+};
 
 export const getPodById = (podId: string) =>
   adminApiClient.get(`/pods/${podId}`);

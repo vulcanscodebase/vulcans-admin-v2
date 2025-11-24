@@ -30,9 +30,11 @@ export default function PodsPage() {
   const loadPods = async () => {
     try {
       setLoading(true);
-      const res = await getAllPods();
+      // Load all pods including deleted ones
+      const res = await getAllPods(true);
       setPods(res.data?.pods || []);
     } catch (error: any) {
+      console.error("Error loading pods:", error);
       toast.error(error.response?.data?.message || "Failed to load pods");
     } finally {
       setLoading(false);

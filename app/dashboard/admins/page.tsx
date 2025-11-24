@@ -27,8 +27,10 @@ export default function AdminsPage() {
     try {
       setLoading(true);
       const res = await getAllAdmins();
+      console.log("Loaded admins:", res.data);
       setAdmins(res.data || []);
     } catch (error: any) {
+      console.error("Error loading admins:", error);
       toast.error(error.response?.data?.message || "Failed to load admins");
     } finally {
       setLoading(false);
@@ -36,16 +38,24 @@ export default function AdminsPage() {
   };
 
   const handleDeleteAdmin = async (adminId: string, adminName: string) => {
+    if (!adminId) {
+      toast.error("Invalid admin ID");
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete admin "${adminName}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
+      console.log("Deleting admin with ID:", adminId);
       await deleteAdmin(adminId);
       toast.success(`Admin "${adminName}" deleted successfully!`);
       loadAdmins(); // Reload the list
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to delete admin");
+      console.error("Delete admin error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to delete admin";
+      toast.error(errorMessage);
     }
   };
 
@@ -127,7 +137,14 @@ export default function AdminsPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteAdmin(admin._id || admin.id, admin.name)}
+                            onClick={() => {
+                              const adminId = admin._id || admin.id;
+                              if (!adminId) {
+                                toast.error("Admin ID not found");
+                                return;
+                              }
+                              handleDeleteAdmin(String(adminId), admin.name);
+                            }}
                             className="bg-red-600 hover:bg-red-700 text-white"
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
