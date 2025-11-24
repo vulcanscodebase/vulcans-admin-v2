@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Trash2, Award, Upload, X, UserPlus } from "lucide-react";
+import { Trash2, Award, Upload, X, UserPlus, Download } from "lucide-react";
 
 interface PodUsersListProps {
   podId: string;
@@ -144,6 +144,29 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
     }
   };
 
+  const downloadTemplate = () => {
+    // Create CSV template
+    const csvContent = `Name,Unique ID,Email,Licenses
+John Doe,STU001,john@example.com,5
+Jane Smith,STU002,jane@example.com,10
+Bob Wilson,EMP001,bob@example.com,3`;
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", "pod_users_template.csv");
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Template downloaded! Open in Excel and fill in your data.");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -193,7 +216,7 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
                   Bulk Upload Users via Excel
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Upload an Excel file with columns: name, email, qualification, dob, licenses
+                  Upload an Excel file with columns: Name, Unique ID, Email, Licenses
                 </p>
               </div>
               <Button
@@ -206,16 +229,72 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
             </div>
 
             <div className="space-y-4">
+              {/* Download Template Button */}
+              <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                <div>
+                  <p className="text-sm font-medium">Need a template?</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Download the Excel template with correct format
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Template
+                </Button>
+              </div>
+
               {/* File Input */}
               <div>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.csv"
                   onChange={handleFileSelect}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   disabled={uploadingExcel}
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Supported formats: .xlsx, .xls, .csv
+                </p>
+              </div>
+
+              {/* Format Info */}
+              <div className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">
+                <p className="font-medium mb-2">📋 Excel Format:</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100 dark:bg-gray-700">
+                        <th className="border p-2 text-left">Column A</th>
+                        <th className="border p-2 text-left">Column B</th>
+                        <th className="border p-2 text-left">Column C</th>
+                        <th className="border p-2 text-left">Column D</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="border p-2 font-medium">Name</td>
+                        <td className="border p-2 font-medium">Unique ID</td>
+                        <td className="border p-2 font-medium">Email</td>
+                        <td className="border p-2 font-medium">Licenses</td>
+                      </tr>
+                      <tr className="text-gray-600 dark:text-gray-400">
+                        <td className="border p-2">John Doe</td>
+                        <td className="border p-2">STU001</td>
+                        <td className="border p-2">john@example.com</td>
+                        <td className="border p-2">5</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  <strong>Note:</strong> Unique ID is optional. Licenses must be a number.
+                </p>
               </div>
 
               {/* Preview */}
