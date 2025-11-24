@@ -7,12 +7,13 @@ import AdminNavbar from "@/components/layout/AdminNavbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, BarChart3, Building2, Award } from "lucide-react";
+import { ArrowLeft, Users, BarChart3, Building2, Award, Trash2 } from "lucide-react";
 import {
   getPodById,
   getPodUsers,
   getPodAnalytics,
   getPodHierarchy,
+  permanentlyDeletePod,
 } from "@/components/api/adminApi";
 import { toast } from "sonner";
 import PodUsersList from "@/components/dashboard/PodUsersList";
@@ -50,6 +51,26 @@ export default function PodDetailPage() {
       toast.error(error.response?.data?.message || "Failed to load pod data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async () => {
+    if (!pod) return;
+
+    const confirmMessage = `⚠️ WARNING: This will PERMANENTLY delete the pod "${pod.name}" and ALL its data.\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`;
+    const userInput = prompt(confirmMessage);
+    
+    if (userInput !== "DELETE") {
+      toast.info("Permanent delete cancelled");
+      return;
+    }
+
+    try {
+      await permanentlyDeletePod(podId);
+      toast.success("Pod permanently deleted successfully");
+      router.push("/dashboard/pods");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to permanently delete pod");
     }
   };
 
@@ -109,14 +130,25 @@ export default function PodDetailPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-6">
-            <Button
-              variant="ghost"
-              onClick={() => router.back()}
-              className="mb-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
+            <div className="flex justify-between items-start mb-4">
+              <Button
+                variant="ghost"
+                onClick={() => router.back()}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              {isSuperAdmin && (
+                <Button
+                  variant="destructive"
+                  onClick={handlePermanentDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Permanently Delete Pod
+                </Button>
+              )}
+            </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">{pod.name}</h1>
             <p className="text-muted-foreground">{pod.email}</p>
           </div>

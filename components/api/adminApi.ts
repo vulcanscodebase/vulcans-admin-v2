@@ -75,6 +75,15 @@ export const getAllAdmins = () => adminApiClient.get("/admin/");
 export const deleteAdmin = (adminId: string) =>
   adminApiClient.delete(`/admin/${adminId}`);
 
+export const getAllUsers = (page = 1, limit = 50, search?: string, verified?: boolean) => {
+  const params = new URLSearchParams();
+  params.append("page", page.toString());
+  params.append("limit", limit.toString());
+  if (search) params.append("search", search);
+  if (verified !== undefined) params.append("verified", verified.toString());
+  return adminApiClient.get(`/admin/users?${params.toString()}`);
+};
+
 export const createAdmin = (data: { name: string; email: string; roleId: string }) =>
   adminApiClient.post("/admin/create-user", data);
 
@@ -157,6 +166,9 @@ export const softDeletePod = (podId: string) =>
 
 export const restorePod = (podId: string) =>
   adminApiClient.patch(`/pods/${podId}/restore`);
+
+export const permanentlyDeletePod = (podId: string) =>
+  adminApiClient.delete(`/pods/${podId}/permanent-delete`);
 
 export const getPodHierarchy = (podId: string) =>
   adminApiClient.get(`/pods/${podId}/hierarchy`);
