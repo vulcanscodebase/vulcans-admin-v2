@@ -1,19 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useAdminAuth } from "@/components/context/AdminAuthContext";
 import { getPodUsers, addPodUser, deletePodUser, getPodById, previewPodUsersExcel, bulkAddPodUsers } from "@/components/api/adminApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Trash2, Award, Upload, X, UserPlus, Download } from "lucide-react";
+import { Trash2, Award, Upload, X, UserPlus, Download, Crown } from "lucide-react";
 
 interface PodUsersListProps {
   podId: string;
 }
 
 export default function PodUsersList({ podId }: PodUsersListProps) {
+  const { isSuperAdmin } = useAdminAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -99,8 +101,10 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
 
     try {
       const res = await previewPodUsersExcel(podId, file);
-      setPreviewData(res.data);
-      toast.success(`Preview loaded: ${res.data.newUsers?.length || 0} new users, ${res.data.existingUsers?.length || 0} existing`);
+      // Backend returns { summary: { newUsers, existingUsers, invalidEmails } }
+      const summary = res.data?.summary || res.data;
+      setPreviewData(summary);
+      toast.success(`Preview loaded: ${summary.newUsers?.length || 0} new users, ${summary.existingUsers?.length || 0} existing`);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to preview Excel file");
       setExcelFile(null);
@@ -218,6 +222,13 @@ Bob Wilson,EMP001,bob@example.com,3`;
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Upload an Excel file with columns: Name, Unique ID, Email, Licenses
                 </p>
+                {isSuperAdmin && (
+                  <div className="mt-2 flex items-center gap-2 text-xs bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <Crown className="h-4 w-4" />
+                    <span className="font-medium">Super Admin:</span>
+                    <span>You can assign unlimited licenses (bypasses pod license pool)</span>
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -294,6 +305,12 @@ Bob Wilson,EMP001,bob@example.com,3`;
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                   <strong>Note:</strong> Unique ID is optional. Licenses must be a number.
+                  {isSuperAdmin && (
+                    <span className="block mt-1 text-yellow-700 dark:text-yellow-300">
+                      <Crown className="h-3 w-3 inline mr-1" />
+                      <strong>Super Admin:</strong> No license pool restrictions - assign unlimited licenses.
+                    </span>
+                  )}
                 </p>
               </div>
 
