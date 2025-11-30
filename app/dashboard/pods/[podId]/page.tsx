@@ -148,7 +148,8 @@ export default function PodDetailPage() {
   const tabs = [
     { id: "overview", label: "Overview", icon: Building2 },
     { id: "users", label: "Users", icon: Users },
-    { id: "reports", label: "Reports", icon: FileText },
+    // Commented out as per request - keep only main Reports section for admin/super admin
+    // { id: "reports", label: "Reports", icon: FileText },
     ...(isSuperAdmin ? [{ id: "licenses", label: "Licenses", icon: Award }] : []),
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "hierarchy", label: "Hierarchy", icon: Building2 },
@@ -310,7 +311,8 @@ export default function PodDetailPage() {
 
           {activeTab === "users" && <PodUsersList podId={podId} />}
 
-          {activeTab === "reports" && <PodReportsList podId={podId} />}
+          {/* Commented out as per request - keep only main Reports section for admin/super admin */}
+          {/* {activeTab === "reports" && <PodReportsList podId={podId} />} */}
 
           {activeTab === "licenses" && isSuperAdmin && (
             <PodLicenseManagement
