@@ -448,9 +448,9 @@ Bob Wilson,EMP001,bob@example.com,3`;
               >
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                <div>
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       {/* Remaining Licenses Display */}
@@ -462,16 +462,16 @@ Bob Wilson,EMP001,bob@example.com,3`;
                             {user.licenses || 0}
                           </span>
                         </div>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user._id)}
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteUser(user._id)}
                         className="bg-red-600 hover:bg-red-700 text-white"
-                      >
+                >
                         <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
+                  Delete
+                </Button>
                     </div>
                   </div>
                 </div>

@@ -76,13 +76,13 @@ export default function PodsPage() {
               </p>
             </div>
             {activeTab === "active" && (
-              <Button
-                onClick={() => setShowCreatePod(true)}
-                className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create New Pod
-              </Button>
+            <Button
+              onClick={() => setShowCreatePod(true)}
+              className="bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Pod
+            </Button>
             )}
           </div>
 

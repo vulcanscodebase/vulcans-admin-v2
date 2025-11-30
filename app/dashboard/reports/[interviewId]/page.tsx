@@ -210,29 +210,52 @@ export default function InterviewDetailPage() {
             </Card>
           )}
 
-          {/* Interview Status Info for non-completed interviews */}
+          {/* Interview Status Info for non-completed interviews or failed reports */}
           {interview.status !== "completed" || !interview.report?.metrics ? (
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h2 className="text-2xl font-semibold mb-3">
-                    Interview {interview.status === "started" ? "Started" : interview.status === "in_progress" ? "In Progress" : "Not Completed"}
-                  </h2>
-                  <p className="text-muted-foreground mb-4">
-                    {interview.status === "started" || interview.status === "in_progress"
-                      ? "This interview is still in progress. The user needs to complete the interview to generate detailed feedback and metrics."
-                      : "This interview has not been completed yet."}
-                  </p>
-                  <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                    interview.status === "started" || interview.status === "in_progress"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}>
-                    Status: {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
-                  </span>
+                  {interview.status === "completed" && !interview.report ? (
+                    // Completed but report generation failed
+                    <>
+                      <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-semibold mb-3 text-red-900 dark:text-red-100">
+                        Report Generation Failed
+                      </h2>
+                      <p className="text-muted-foreground mb-4">
+                        The interview was marked as completed, but the report could not be generated. This may be due to insufficient response data or a technical issue during the interview.
+                      </p>
+                      <span className="px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        Status: Completed (No Report)
+                      </span>
+                    </>
+                  ) : (
+                    // In progress or started
+                    <>
+                      <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Calendar className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h2 className="text-2xl font-semibold mb-3">
+                        Interview {interview.status === "started" ? "Started" : interview.status === "in_progress" ? "In Progress" : "Not Completed"}
+                      </h2>
+                      <p className="text-muted-foreground mb-4">
+                        {interview.status === "started" || interview.status === "in_progress"
+                          ? "This interview is still in progress. The user needs to complete the interview to generate detailed feedback and metrics."
+                          : "This interview has not been completed yet."}
+                      </p>
+                      <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                        interview.status === "started" || interview.status === "in_progress"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                        Status: {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
+                      </span>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
