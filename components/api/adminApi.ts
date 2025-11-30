@@ -185,12 +185,13 @@ export const getPodInterviewReports = (podId: string, page = 1, limit = 50, stat
   return adminApiClient.get(`/interviews/pod/${podId}/reports?${params.toString()}`);
 };
 
-export const getAllInterviewReports = (page = 1, limit = 50, status?: string, podId?: string) => {
+export const getAllInterviewReports = (page = 1, limit = 50, status?: string, podId?: string, search?: string) => {
   const params = new URLSearchParams();
   params.append("page", page.toString());
   params.append("limit", limit.toString());
   if (status) params.append("status", status);
   if (podId) params.append("podId", podId);
+  if (search) params.append("search", search);
   return adminApiClient.get(`/interviews/admin/all-reports?${params.toString()}`);
 };
 

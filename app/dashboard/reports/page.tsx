@@ -49,13 +49,18 @@ export default function ReportsPage() {
   const [podFilter, setPodFilter] = useState<string>("");
   const [pods, setPods] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedInterviews, setSelectedInterviews] = useState<Set<string>>(new Set());
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     // Allow both super admin and regular admins to access reports
     // Super admin sees all, regular admin sees only their pod users' reports
     loadPods();
+  }, []);
+
+  useEffect(() => {
     loadReports();
-  }, [page, statusFilter, podFilter]);
+  }, [page, statusFilter, podFilter, searchTerm]);
 
   const loadPods = async () => {
     try {
@@ -73,10 +78,13 @@ export default function ReportsPage() {
         page,
         50,
         statusFilter || undefined,
-        podFilter || undefined
+        podFilter || undefined,
+        searchTerm || undefined
       );
       setInterviews(res.data?.interviews || []);
       setTotalPages(res.data?.pagination?.pages || 1);
+      // Clear selections when data changes
+      setSelectedInterviews(new Set());
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load reports");
     } finally {
@@ -125,15 +133,141 @@ export default function ReportsPage() {
     }
   };
 
-  const filteredInterviews = interviews.filter((interview) => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      interview.userId?.name?.toLowerCase().includes(search) ||
-      interview.userId?.email?.toLowerCase().includes(search) ||
-      interview.jobRole?.toLowerCase().includes(search)
-    );
-  });
+  const filteredInterviews = interviews; // Filtering now done on backend
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const completedIds = filteredInterviews
+        .filter((i) => i.status === "completed" && i.report?.metrics)
+        .map((i) => i._id);
+      setSelectedInterviews(new Set(completedIds));
+    } else {
+      setSelectedInterviews(new Set());
+    }
+  };
+
+  const handleSelectInterview = (interviewId: string, checked: boolean) => {
+    const newSelection = new Set(selectedInterviews);
+    if (checked) {
+      newSelection.add(interviewId);
+    } else {
+      newSelection.delete(interviewId);
+    }
+    setSelectedInterviews(newSelection);
+  };
+
+  const handleDownloadPDF = async (interviewId: string) => {
+    try {
+      const interview = interviews.find((i) => i._id === interviewId);
+      if (!interview || !interview.report) {
+        toast.error("Interview report not found");
+        return;
+      }
+
+      // Fetch full interview details for PDF generation
+      const { data } = await getInterviewById(interviewId);
+      const fullInterview = data.interview;
+
+      // Prepare feedback text
+      const feedbackText = [
+        fullInterview.report?.strengths && fullInterview.report.strengths.length > 0 
+          ? `Strengths:\n${fullInterview.report.strengths.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}` 
+          : '',
+        fullInterview.report?.improvements && fullInterview.report.improvements.length > 0 
+          ? `Areas for Improvement:\n${fullInterview.report.improvements.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}` 
+          : '',
+        fullInterview.report?.tips && fullInterview.report.tips.length > 0 
+          ? `Tips:\n${fullInterview.report.tips.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}` 
+          : '',
+        fullInterview.report?.overallFeedback ? `\nOverall Feedback:\n${fullInterview.report.overallFeedback}` : '',
+      ].filter(Boolean).join('\n\n') || 'No feedback available';
+
+      // Prepare question data
+      const questionData = (fullInterview.questionsData || []).map((q: any) => ({
+        question: q.question || 'No question',
+        answer: q.transcript || 'No answer provided',
+      }));
+
+      // Prepare resume analysis
+      const resumeAnalysisText = fullInterview.metadata?.atsScore 
+        ? `ATS Score: ${fullInterview.metadata.atsScore}/100\n\nImprovement Suggestions:\n${(fullInterview.metadata.resumeTips || []).map((tip: string, i: number) => `${i + 1}. ${tip}`).join('\n')}`
+        : 'No resume analysis available';
+
+      const reportId = `ADM-${new Date().getFullYear()}-${String(
+        new Date().getMonth() + 1
+      ).padStart(2, "0")}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
+
+      const pdfData = {
+        reportDate: new Date().toLocaleDateString(),
+        reportId,
+        candidateName: fullInterview.userId?.name || 'Unknown',
+        candidateEmail: fullInterview.userId?.email || '',
+        jobRole: fullInterview.jobRole || 'General Interview',
+        allQuestionData: questionData,
+        feedback: feedbackText,
+        resumeAnalysis: resumeAnalysisText,
+      };
+
+      // Call admin API's generate-pdf endpoint (we'll need to create this or use the academy one)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const response = await fetch(`${apiUrl}/api/generate-pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(pdfData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = `Interview_Report_${interview.userId?.name?.replace(/\s+/g, '_')}_${interview.jobRole?.replace(/\s+/g, '_')}_${new Date().toISOString().split("T")[0]}.pdf`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
+
+  const handleDownloadSelectedPDFs = async () => {
+    if (selectedInterviews.size === 0) {
+      toast.error("Please select at least one interview");
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const interviewId of Array.from(selectedInterviews)) {
+      try {
+        await handleDownloadPDF(interviewId);
+        successCount++;
+        // Add delay between downloads to avoid overwhelming the browser
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        failCount++;
+      }
+    }
+
+    setIsGeneratingPDF(false);
+    
+    if (successCount > 0) {
+      toast.success(`Downloaded ${successCount} PDF(s)`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to download ${failCount} PDF(s)`);
+    }
+  };
 
   // Both super admin and regular admins can access this page
   // The backend API will filter results based on admin permissions
@@ -156,59 +290,87 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               {/* Filters */}
-              <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, email, or role..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+              <div className="mb-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name, email, or role..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setPage(1);
+                      }}
+                      className="pl-10"
+                    />
+                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                  >
+                    <option value="">All Status</option>
+                    <option value="completed">Completed</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="started">Started</option>
+                    <option value="abandoned">Abandoned</option>
+                  </select>
+                  <select
+                    value={podFilter}
+                    onChange={(e) => {
+                      setPodFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                  >
+                    <option value="">All Pods</option>
+                    {pods
+                      .filter((p) => !p.isDeleted)
+                      .map((pod) => (
+                        <option key={pod._id} value={pod._id}>
+                          {pod.name}
+                        </option>
+                      ))}
+                  </select>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setStatusFilter("");
+                      setPodFilter("");
+                      setSearchTerm("");
+                      setPage(1);
+                    }}
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Clear Filters
+                  </Button>
                 </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 border rounded-lg"
-                >
-                  <option value="">All Status</option>
-                  <option value="completed">Completed</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="started">Started</option>
-                  <option value="abandoned">Abandoned</option>
-                </select>
-                <select
-                  value={podFilter}
-                  onChange={(e) => {
-                    setPodFilter(e.target.value);
-                    setPage(1);
-                  }}
-                  className="px-3 py-2 border rounded-lg"
-                >
-                  <option value="">All Pods</option>
-                  {pods
-                    .filter((p) => !p.isDeleted)
-                    .map((pod) => (
-                      <option key={pod._id} value={pod._id}>
-                        {pod.name}
-                      </option>
-                    ))}
-                </select>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setStatusFilter("");
-                    setPodFilter("");
-                    setSearchTerm("");
-                    setPage(1);
-                  }}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Clear Filters
-                </Button>
+
+                {/* Bulk Actions */}
+                {selectedInterviews.size > 0 && (
+                  <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <span className="text-sm font-medium">
+                      {selectedInterviews.size} interview(s) selected
+                    </span>
+                    <Button
+                      onClick={handleDownloadSelectedPDFs}
+                      disabled={isGeneratingPDF}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      {isGeneratingPDF ? "Downloading..." : "Download Selected PDFs"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedInterviews(new Set())}
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Reports List */}
@@ -219,14 +381,50 @@ export default function ReportsPage() {
                   No interview reports found.
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {filteredInterviews.map((interview) => (
-                    <div
-                      key={interview._id}
-                      className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                <>
+                  {/* Select All */}
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedInterviews.size > 0 &&
+                        selectedInterviews.size ===
+                          filteredInterviews.filter(
+                            (i) => i.status === "completed" && i.report?.metrics
+                          ).length
+                      }
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium">
+                      Select All Completed Interviews
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {filteredInterviews.map((interview) => {
+                      const canSelect = interview.status === "completed" && interview.report?.metrics;
+                      const isSelected = selectedInterviews.has(interview._id);
+
+                      return (
+                        <div
+                          key={interview._id}
+                          className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Checkbox */}
+                            <div className="pt-1">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => handleSelectInterview(interview._id, e.target.checked)}
+                                disabled={!canSelect}
+                                className="h-4 w-4 rounded border-gray-300 disabled:opacity-50"
+                                title={!canSelect ? "Only completed interviews can be selected" : "Select this interview"}
+                              />
+                            </div>
+
+                            <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="font-semibold text-lg">
                               {interview.jobRole || "General Interview"}
@@ -275,31 +473,44 @@ export default function ReportsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-2 ml-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewDetails(interview._id)}
-                            disabled={interview.status !== "completed"}
-                            title={interview.status !== "completed" ? "View is only available for completed interviews" : "View interview details"}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteInterview(interview._id, interview.jobRole || "General Interview")}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </Button>
+                            <div className="flex gap-2 ml-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDetails(interview._id)}
+                                disabled={interview.status !== "completed"}
+                                title={interview.status !== "completed" ? "View is only available for completed interviews" : "View interview details"}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadPDF(interview._id)}
+                                disabled={!canSelect || isGeneratingPDF}
+                                title={!canSelect ? "Download is only available for completed interviews" : "Download PDF report"}
+                                className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                PDF
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteInterview(interview._id, interview.jobRole || "General Interview")}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
 
               {/* Pagination */}
