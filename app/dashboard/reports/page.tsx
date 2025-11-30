@@ -51,14 +51,11 @@ export default function ReportsPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error("Access denied. Super admin only.");
-      router.push("/dashboard");
-      return;
-    }
+    // Allow both super admin and regular admins to access reports
+    // Super admin sees all, regular admin sees only their pod users' reports
     loadPods();
     loadReports();
-  }, [isSuperAdmin, page, statusFilter, podFilter]);
+  }, [page, statusFilter, podFilter]);
 
   const loadPods = async () => {
     try {
@@ -138,9 +135,8 @@ export default function ReportsPage() {
     );
   });
 
-  if (!isSuperAdmin) {
-    return null;
-  }
+  // Both super admin and regular admins can access this page
+  // The backend API will filter results based on admin permissions
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
