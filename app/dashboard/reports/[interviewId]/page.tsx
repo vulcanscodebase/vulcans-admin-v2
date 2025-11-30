@@ -408,6 +408,130 @@ export default function InterviewDetailPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Overall Feedback */}
+              {interview.report?.overallFeedback && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Overall Feedback</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-relaxed">{interview.report.overallFeedback}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Question-by-Question Analysis */}
+              {interview.questionsData && interview.questionsData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Question-by-Question Analysis</CardTitle>
+                    <CardDescription>Detailed breakdown of each interview question</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {interview.questionsData.map((q: any, index: number) => (
+                      <div key={index} className="border-b last:border-b-0 pb-6 last:pb-0">
+                        {/* Question */}
+                        <div className="mb-4">
+                          <h3 className="font-semibold text-sm text-muted-foreground mb-2">
+                            Question {q.questionNumber || index + 1}
+                          </h3>
+                          <p className="font-medium">{q.question}</p>
+                        </div>
+
+                        {/* Transcript */}
+                        {q.transcript && q.transcript !== "Transcript is empty" && (
+                          <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            <p className="text-xs text-muted-foreground mb-1">Response:</p>
+                            <p className="text-sm">{q.transcript}</p>
+                          </div>
+                        )}
+
+                        {/* Metrics */}
+                        {q.metrics && (
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
+                            <div className="text-center p-2 rounded-lg border">
+                              <p className="text-xs text-muted-foreground">Confidence</p>
+                              <StarRating value={q.metrics.confidence || 0} />
+                            </div>
+                            <div className="text-center p-2 rounded-lg border">
+                              <p className="text-xs text-muted-foreground">Body Language</p>
+                              <StarRating value={q.metrics.bodyLanguage || 0} />
+                            </div>
+                            <div className="text-center p-2 rounded-lg border">
+                              <p className="text-xs text-muted-foreground">Knowledge</p>
+                              <StarRating value={q.metrics.knowledge || 0} />
+                            </div>
+                            <div className="text-center p-2 rounded-lg border">
+                              <p className="text-xs text-muted-foreground">Fluency</p>
+                              <StarRating value={q.metrics.fluency || 0} />
+                            </div>
+                            <div className="text-center p-2 rounded-lg border">
+                              <p className="text-xs text-muted-foreground">Skill Relevance</p>
+                              <StarRating value={q.metrics.skillRelevance || 0} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Feedback for this question */}
+                        {q.metrics?.feedback && (
+                          <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                            <p className="text-xs text-muted-foreground mb-1">AI Feedback:</p>
+                            <p className="text-sm">{q.metrics.feedback}</p>
+                          </div>
+                        )}
+
+                        {/* Note: Audio playback NOT included as per user request */}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Resume Analysis */}
+              {interview.metadata && (interview.metadata.atsScore || interview.metadata.resumeTips) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Resume Analysis</CardTitle>
+                    <CardDescription>ATS compatibility and improvement suggestions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {interview.metadata.atsScore && (
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium">ATS Score</span>
+                          <span className={`font-bold text-2xl px-4 py-2 rounded-lg ${
+                            interview.metadata.atsScore >= 80
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200"
+                              : interview.metadata.atsScore >= 60
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200"
+                              : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200"
+                          }`}>
+                            {interview.metadata.atsScore}/100
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {interview.metadata.resumeTips && interview.metadata.resumeTips.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-3">Improvement Suggestions:</h4>
+                        <div className="space-y-2">
+                          {interview.metadata.resumeTips.map((tip: string, index: number) => (
+                            <div
+                              key={index}
+                              className="flex items-start space-x-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20"
+                            >
+                              <div className="w-2 h-2 rounded-full bg-purple-500 mt-2"></div>
+                              <p className="text-sm">{tip}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </div>
