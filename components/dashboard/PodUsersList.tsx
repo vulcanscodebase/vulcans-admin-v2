@@ -19,6 +19,8 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
@@ -44,8 +46,10 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await getPodUsers(podId, page, 10);
+      const res = await getPodUsers(podId, page, 50); // Increased limit to 50
       setUsers(res.data?.users || []);
+      setTotalPages(res.data?.totalPages || 1);
+      setTotalUsers(res.data?.totalUsers || 0);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load users");
     } finally {
@@ -473,6 +477,36 @@ Bob Wilson,EMP001,bob@example.com,3`;
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && users.length > 0 && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t pt-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Showing {((page - 1) * 50) + 1} to {Math.min(page * 50, totalUsers)} of {totalUsers} users
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
