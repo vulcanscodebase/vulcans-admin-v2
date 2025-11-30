@@ -54,10 +54,17 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
     try {
       setLoading(true);
       const res = await getPodInterviewReports(podId, page, 50, statusFilter || undefined);
-      setInterviews(res.data?.interviews || []);
+      console.log("Pod reports response:", res.data); // Debug log
+      const interviews = res.data?.interviews || [];
+      console.log("Interviews found:", interviews.length); // Debug log
+      setInterviews(interviews);
       setTotalPages(res.data?.pagination?.pages || 1);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to load reports");
+      console.error("Error loading pod reports:", error); // Debug log
+      const errorMessage = error.response?.data?.message || error.message || "Failed to load reports";
+      toast.error(errorMessage);
+      setInterviews([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
