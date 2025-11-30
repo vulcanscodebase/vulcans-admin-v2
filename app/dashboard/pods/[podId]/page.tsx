@@ -364,10 +364,107 @@ export default function PodDetailPage() {
               </CardHeader>
               <CardContent>
                 {hierarchy ? (
-                  <div className="space-y-2">
-                    <pre className="p-4 bg-muted rounded-lg overflow-auto">
-                      {JSON.stringify(hierarchy, null, 2)}
-                    </pre>
+                  <div className="space-y-6">
+                    {/* Current Pod */}
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-lg text-blue-900 dark:text-blue-100">
+                            {hierarchy.pod?.name || "Current Pod"}
+                          </h3>
+                          <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                            Type: {hierarchy.pod?.type || "N/A"} | Level: {hierarchy.pod?.nestingLevel || 0}
+                          </p>
+                          {hierarchy.pod?.path && (
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                              Path: {hierarchy.pod.path}
+                            </p>
+                          )}
+                        </div>
+                        <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-sm font-medium">
+                          Current
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Parent Pod */}
+                    {hierarchy.parent ? (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                          <ArrowLeft className="h-4 w-4" />
+                          Parent Pod
+                        </h4>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{hierarchy.parent.name}</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Type: {hierarchy.parent.type} | Level: {hierarchy.parent.nestingLevel || 0}
+                              </p>
+                              {hierarchy.parent.path && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Path: {hierarchy.parent.path}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/dashboard/pods/${hierarchy.parent._id}`)}
+                            >
+                              View
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <p className="text-sm text-muted-foreground">No parent pod (root level)</p>
+                      </div>
+                    )}
+
+                    {/* Child Pods */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Child Pods ({hierarchy.children?.length || 0})
+                      </h4>
+                      {hierarchy.children && hierarchy.children.length > 0 ? (
+                        <div className="space-y-2">
+                          {hierarchy.children.map((child: any) => (
+                            <div
+                              key={child._id}
+                              className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium">{child.name}</p>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Type: {child.type} | Level: {child.nestingLevel || 0}
+                                  </p>
+                                  {child.path && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Path: {child.path}
+                                    </p>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => router.push(`/dashboard/pods/${child._id}`)}
+                                >
+                                  View
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <p className="text-sm text-muted-foreground">No child pods</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-muted-foreground">No hierarchy data available</p>
