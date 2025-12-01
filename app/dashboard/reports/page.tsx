@@ -182,10 +182,19 @@ export default function ReportsPage() {
         fullInterview.report?.overallFeedback ? `\nOverall Feedback:\n${fullInterview.report.overallFeedback}` : '',
       ].filter(Boolean).join('\n\n') || 'No feedback available';
 
-      // Prepare question data
+      // Prepare question data with full metrics and feedback
       const questionData = (fullInterview.questionsData || []).map((q: any) => ({
         question: q.question || 'No question',
         answer: q.transcript || 'No answer provided',
+        questionNumber: q.questionNumber || 0,
+        metrics: q.metrics ? {
+          confidence: q.metrics.confidence || 0,
+          bodyLanguage: q.metrics.bodyLanguage || 0,
+          knowledge: q.metrics.knowledge || 0,
+          skillRelevance: q.metrics.skillRelevance || 0,
+          fluency: q.metrics.fluency || 0,
+          feedback: q.metrics.feedback || '',
+        } : null,
       }));
 
       // Prepare resume analysis
@@ -199,6 +208,7 @@ export default function ReportsPage() {
 
       const pdfData = {
         reportDate: new Date().toLocaleDateString(),
+        downloadTimestamp: new Date().toLocaleString(),
         reportId,
         candidateName: fullInterview.userId?.name || 'Unknown',
         candidateEmail: fullInterview.userId?.email || '',
@@ -206,6 +216,7 @@ export default function ReportsPage() {
         allQuestionData: questionData,
         feedback: feedbackText,
         resumeAnalysis: resumeAnalysisText,
+        reportType: 'admin',
       };
 
       // Call admin API's generate-pdf endpoint
