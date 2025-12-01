@@ -7,7 +7,7 @@ import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getAllInterviewReports, getAllPods, deleteInterview } from "@/components/api/adminApi";
+import { getAllInterviewReports, getAllPods, deleteInterview, getInterviewById } from "@/components/api/adminApi";
 import { toast } from "sonner";
 import { Eye, Download, Calendar, User, Briefcase, CheckCircle, Search, Filter, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -208,9 +208,8 @@ export default function ReportsPage() {
         resumeAnalysis: resumeAnalysisText,
       };
 
-      // Call admin API's generate-pdf endpoint (we'll need to create this or use the academy one)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const response = await fetch(`${apiUrl}/api/generate-pdf`, {
+      // Call admin API's generate-pdf endpoint
+      const response = await fetch("/api/generate-pdf", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
