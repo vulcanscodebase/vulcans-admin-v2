@@ -20,12 +20,8 @@ export default function PodsPage() {
   const [activeTab, setActiveTab] = useState<"active" | "deleted">("active");
 
   useEffect(() => {
-    if (!isSuperAdmin) {
-      toast.error("Access denied. Super admin only.");
-      return;
-    }
     loadPods();
-  }, [isSuperAdmin]);
+  }, []);
 
   const loadPods = async () => {
     try {
@@ -46,18 +42,7 @@ export default function PodsPage() {
     loadPods();
   };
 
-  if (!isSuperAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>This page is only accessible to super admins.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -111,6 +96,7 @@ export default function PodsPage() {
                       {pods.filter((p) => !p.isDeleted).length}
                     </span>
                   </button>
+                  {isSuperAdmin && (
                   <button
                     onClick={() => setActiveTab("deleted")}
                     className={`px-4 py-2 border-b-2 transition-colors flex items-center gap-2 ${
@@ -125,6 +111,7 @@ export default function PodsPage() {
                       {pods.filter((p) => p.isDeleted).length}
                     </span>
                   </button>
+                  )}
                 </div>
               </div>
 

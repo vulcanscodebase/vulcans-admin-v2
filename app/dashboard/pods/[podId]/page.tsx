@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAdminAuth } from "@/components/context/AdminAuthContext";
 import AdminNavbar from "@/components/layout/AdminNavbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -23,6 +23,7 @@ import PodReportsList from "@/components/dashboard/PodReportsList";
 export default function PodDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isSuperAdmin } = useAdminAuth();
   const podId = params.podId as string;
 
@@ -32,6 +33,13 @@ export default function PodDetailPage() {
   const [totalRemainingInterviews, setTotalRemainingInterviews] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "analytics" | "hierarchy" | "licenses" | "reports">("overview");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "users", "analytics", "hierarchy", "licenses", "reports"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadPodData();
