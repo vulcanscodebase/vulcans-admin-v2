@@ -23,6 +23,8 @@ export default function UsersPage() {
     total: 0,
     pages: 0,
   });
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -37,6 +39,7 @@ export default function UsersPage() {
       setLoading(true);
       const res = await getAllUsers(page, limit, searchTerm || undefined, verifiedFilter);
       setUsers(res.data?.users || []);
+      setSelectedUserIds([]);
       setPagination({
         total: res.data?.pagination?.total || 0,
         pages: res.data?.pagination?.pages || 0,
@@ -77,6 +80,62 @@ export default function UsersPage() {
       console.error("Delete user error:", error);
       const errorMessage = error.response?.data?.message || error.message || "Failed to delete user";
       toast.error(errorMessage);
+    }
+  };
+
+  const handleToggleUser = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleToggleAll = () => {
+    if (selectedUserIds.length === users.length) {
+      setSelectedUserIds([]);
+    } else {
+      setSelectedUserIds(users.map((u) => String(u._id || u.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedUserIds.length === 0) return;
+
+    const confirmMessage = `⚠️ WARNING: This will PERMANENTLY delete ${selectedUserIds.length} user(s).\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`;
+    const userInput = prompt(confirmMessage);
+
+    if (userInput !== "DELETE") {
+      toast.info("Bulk deletion cancelled");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await Promise.allSettled(
+        selectedUserIds.map((id) => deleteUser(id))
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failureCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} user(s) successfully.`);
+      }
+      if (failureCount > 0) {
+        toast.error(`Failed to delete ${failureCount} user(s). Check console for details.`);
+        console.error("Bulk delete users results:", results);
+      }
+
+      setSelectedUserIds([]);
+      loadUsers();
+    } catch (error: any) {
+      console.error("Bulk delete users error:", error);
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to delete selected users"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -166,6 +225,55 @@ export default function UsersPage() {
                 </div>
               </div>
 
+              {/* Selection toggle + bulk actions */}
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  {selectionMode
+                    ? selectedUserIds.length > 0
+                      ? `${selectedUserIds.length} user(s) selected`
+                      : "Selection mode: choose users to delete"
+                    : "Bulk selection disabled"}
+                </div>
+                {selectionMode ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                      disabled={selectedUserIds.length === 0 || loading}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete Selected
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectionMode(false);
+                        setSelectedUserIds([]);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectionMode(true);
+                      setSelectedUserIds([]);
+                    }}
+                  >
+                    Select
+                  </Button>
+                )}
+              </div>
+
               {/* Users Table */}
               {loading ? (
                 <div className="text-center py-8">Loading users...</div>
@@ -181,6 +289,19 @@ export default function UsersPage() {
                     <table className="w-full">
                       <thead className="bg-muted/50">
                         <tr>
+                          {selectionMode && (
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              <input
+                                type="checkbox"
+                                aria-label="Select all users on this page"
+                                checked={
+                                  users.length > 0 &&
+                                  selectedUserIds.length === users.length
+                                }
+                                onChange={handleToggleAll}
+                              />
+                            </th>
+                          )}
                           <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             User
                           </th>
@@ -207,6 +328,16 @@ export default function UsersPage() {
                       <tbody className="bg-card divide-y divide-border">
                         {users.map((user) => (
                           <tr key={user._id || user.id} className="hover:bg-muted/50 transition-colors">
+                            {selectionMode && (
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select user ${user.name || user.email}`}
+                                  checked={selectedUserIds.includes(String(user._id || user.id))}
+                                  onChange={() => handleToggleUser(String(user._id || user.id))}
+                                />
+                              </td>
+                            )}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10 rounded-full bg-vulcan-accent-blue/10 flex items-center justify-center">

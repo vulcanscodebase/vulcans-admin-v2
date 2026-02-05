@@ -51,6 +51,7 @@ export default function ReportsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInterviews, setSelectedInterviews] = useState<Set<string>>(new Set());
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     // Allow both super admin and regular admins to access reports
@@ -248,6 +249,54 @@ export default function ReportsPage() {
     }
   };
 
+  const handleBulkDeleteInterviews = async () => {
+    if (selectedInterviews.size === 0) {
+      toast.error("Please select at least one interview to delete");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedInterviews.size} interview(s)? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      const ids = Array.from(selectedInterviews);
+      const results = await Promise.allSettled(
+        ids.map((id) => deleteInterview(id))
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled") successCount++;
+        else failCount++;
+      }
+
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} interview(s) successfully`);
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to delete ${failCount} interview(s). Check console for details.`);
+        console.error("Bulk delete interviews results:", results);
+      }
+    } catch (error: any) {
+      console.error("Bulk delete interviews error:", error);
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to delete selected interviews"
+      );
+    } finally {
+      setSelectedInterviews(new Set());
+      loadReports();
+    }
+  };
+
   const handleDownloadSelectedPDFs = async () => {
     if (selectedInterviews.size === 0) {
       toast.error("Please select at least one interview");
@@ -359,28 +408,64 @@ export default function ReportsPage() {
                   </Button>
                 </div>
 
-                {/* Bulk Actions */}
-                {selectedInterviews.size > 0 && (
-                  <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <span className="text-sm font-medium">
-                      {selectedInterviews.size} interview(s) selected
-                    </span>
-                    <Button
-                      onClick={handleDownloadSelectedPDFs}
-                      disabled={isGeneratingPDF}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      {isGeneratingPDF ? "Downloading..." : "Download Selected PDFs"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedInterviews(new Set())}
-                    >
-                      Clear Selection
-                    </Button>
+                {/* Selection toggle + bulk actions */}
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    {selectionMode
+                      ? selectedInterviews.size > 0
+                        ? `${selectedInterviews.size} interview(s) selected`
+                        : "Selection mode: choose interviews to download/delete"
+                      : "Bulk selection disabled"}
                   </div>
-                )}
+                  {selectionMode ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedInterviews.size > 0 && (
+                        <>
+                          <Button
+                            onClick={handleDownloadSelectedPDFs}
+                            disabled={isGeneratingPDF}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            {isGeneratingPDF ? "Downloading..." : "Download Selected PDFs"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBulkDeleteInterviews}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Selected
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectionMode(false);
+                          setSelectedInterviews(new Set());
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectionMode(true);
+                        setSelectedInterviews(new Set());
+                      }}
+                    >
+                      Select
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Reports List */}
@@ -393,23 +478,25 @@ export default function ReportsPage() {
               ) : (
                 <>
                   {/* Select All */}
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedInterviews.size > 0 &&
-                        selectedInterviews.size ===
-                          filteredInterviews.filter(
-                            (i) => i.status === "completed" && i.report?.metrics
-                          ).length
-                      }
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <span className="text-sm font-medium">
-                      Select All Completed Interviews
-                    </span>
-                  </div>
+                  {selectionMode && (
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedInterviews.size > 0 &&
+                          selectedInterviews.size ===
+                            filteredInterviews.filter(
+                              (i) => i.status === "completed" && i.report?.metrics
+                            ).length
+                        }
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium">
+                        Select All Completed Interviews
+                      </span>
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     {filteredInterviews.map((interview) => {
@@ -423,16 +510,18 @@ export default function ReportsPage() {
                         >
                           <div className="flex items-start gap-4">
                             {/* Checkbox */}
-                            <div className="pt-1">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => handleSelectInterview(interview._id, e.target.checked)}
-                                disabled={!canSelect}
-                                className="h-4 w-4 rounded border-gray-300 disabled:opacity-50"
-                                title={!canSelect ? "Only completed interviews can be selected" : "Select this interview"}
-                              />
-                            </div>
+                            {selectionMode && (
+                              <div className="pt-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => handleSelectInterview(interview._id, e.target.checked)}
+                                  disabled={!canSelect}
+                                  className="h-4 w-4 rounded border-gray-300 disabled:opacity-50"
+                                  title={!canSelect ? "Only completed interviews can be selected" : "Select this interview"}
+                                />
+                              </div>
+                            )}
 
                             <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
