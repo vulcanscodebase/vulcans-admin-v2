@@ -37,8 +37,6 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
   const [previewData, setPreviewData] = useState<any>(null);
   const [uploadingExcel, setUploadingExcel] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -52,8 +50,6 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
       setUsers(res.data?.users || []);
       setTotalPages(res.data?.totalPages || 1);
       setTotalUsers(res.data?.totalUsers || 0);
-      setSelectedUserIds([]);
-      setSelectedUserIds([]);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load users");
     } finally {
@@ -92,65 +88,6 @@ export default function PodUsersList({ podId }: PodUsersListProps) {
       loadUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to delete user");
-    }
-  };
-
-  const handleToggleUser = (userId: string) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
-
-  const handleToggleAllUsers = () => {
-    if (selectedUserIds.length === users.length) {
-      setSelectedUserIds([]);
-    } else {
-      setSelectedUserIds(users.map((u) => String(u._id)));
-    }
-  };
-
-  const handleBulkDeleteUsers = async () => {
-    if (selectedUserIds.length === 0) return;
-
-    if (
-      !confirm(
-        `Are you sure you want to delete ${selectedUserIds.length} user(s) from this pod?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const results = await Promise.allSettled(
-        selectedUserIds.map((id) => deletePodUser(podId, id))
-      );
-
-      const successCount = results.filter((r) => r.status === "fulfilled").length;
-      const failureCount = results.length - successCount;
-
-      if (successCount > 0) {
-        toast.success(`Deleted ${successCount} pod user(s) successfully.`);
-      }
-      if (failureCount > 0) {
-        toast.error(
-          `Failed to delete ${failureCount} pod user(s). Check console for details.`
-        );
-        console.error("Bulk delete pod users results:", results);
-      }
-
-      setSelectedUserIds([]);
-      loadUsers();
-      loadPodInfo();
-    } catch (error: any) {
-      console.error("Bulk delete pod users error:", error);
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to delete selected pod users"
-      );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -277,54 +214,6 @@ Bob Wilson,EMP001,bob@example.com,3`;
         </div>
       </CardHeader>
       <CardContent>
-        {/* Selection toggle + bulk actions */}
-        <div className="mb-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {selectionMode
-              ? selectedUserIds.length > 0
-                ? `${selectedUserIds.length} user(s) selected`
-                : "Selection mode: choose users to delete"
-              : "Bulk selection disabled"}
-          </div>
-          {selectionMode ? (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDeleteUsers}
-                disabled={selectedUserIds.length === 0 || loading}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectionMode(false);
-                  setSelectedUserIds([]);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectionMode(true);
-                setSelectedUserIds([]);
-              }}
-            >
-              Select
-            </Button>
-          )}
-        </div>
         {/* Excel Upload Section */}
         {showExcelUpload && (
           <div className="mb-6 p-4 border-2 border-dashed rounded-lg bg-blue-50 dark:bg-blue-900/20">
@@ -552,59 +441,42 @@ Bob Wilson,EMP001,bob@example.com,3`;
           <p className="text-sm text-gray-600 dark:text-gray-400">No users found.</p>
         ) : (
           <div className="space-y-2">
-            {users.map((user) => {
-              const userId = String(user._id);
-              return (
-                <div
-                  key={userId}
-                  className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+            {users.map((user) => (
+              <div
+                key={user._id}
+                className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {/* Remaining Licenses Display */}
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="text-sm">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Remaining:</span>
+                          <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400">
+                            {user.licenses || 0}
+                          </span>
+                        </div>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDeleteUser(user._id)}
+                        className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    {selectionMode && (
-                      <input
-                        type="checkbox"
-                        aria-label={`Select user ${user.name || user.email}`}
-                        checked={selectedUserIds.includes(userId)}
-                        onChange={() => handleToggleUser(userId)}
-                      />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{user.name}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {user.email}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {/* Remaining Licenses Display */}
-                          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                            <div className="text-sm">
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                Remaining:
-                              </span>
-                              <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400">
-                                {user.licenses || 0}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user._id)}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
 
