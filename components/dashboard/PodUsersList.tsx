@@ -277,54 +277,6 @@ Bob Wilson,EMP001,bob@example.com,3`;
         </div>
       </CardHeader>
       <CardContent>
-        {/* Selection toggle + bulk actions */}
-        <div className="mb-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {selectionMode
-              ? selectedUserIds.length > 0
-                ? `${selectedUserIds.length} user(s) selected`
-                : "Selection mode: choose users to delete"
-              : "Bulk selection disabled"}
-          </div>
-          {selectionMode ? (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDeleteUsers}
-                disabled={selectedUserIds.length === 0 || loading}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectionMode(false);
-                  setSelectedUserIds([]);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectionMode(true);
-                setSelectedUserIds([]);
-              }}
-            >
-              Select
-            </Button>
-          )}
-        </div>
         {/* Excel Upload Section */}
         {showExcelUpload && (
           <div className="mb-6 p-4 border-2 border-dashed rounded-lg bg-blue-50 dark:bg-blue-900/20">
@@ -560,14 +512,6 @@ Bob Wilson,EMP001,bob@example.com,3`;
                   className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    {selectionMode && (
-                      <input
-                        type="checkbox"
-                        aria-label={`Select user ${user.name || user.email}`}
-                        checked={selectedUserIds.includes(userId)}
-                        onChange={() => handleToggleUser(userId)}
-                      />
-                    )}
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div>
@@ -589,15 +533,6 @@ Bob Wilson,EMP001,bob@example.com,3`;
                               </span>
                             </div>
                           </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user._id)}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
                         </div>
                       </div>
                     </div>
