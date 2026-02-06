@@ -70,7 +70,7 @@ export default function PodsTable({ pods, onRefresh }: PodsTableProps) {
   };
 
   const handleViewAnalytics = async (podId: string) => {
-    router.push(`/dashboard/pods/${podId}/analytics`);
+    router.push(`/dashboard/pods/${podId}?tab=analytics`);
   };
 
   const showingDeleted = pods.length > 0 && pods[0]?.isDeleted;

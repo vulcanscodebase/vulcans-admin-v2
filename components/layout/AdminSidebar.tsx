@@ -20,7 +20,7 @@ interface AdminSidebarProps {
 const sidebarItems: SidebarItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/pods", label: "Pods", icon: Building2 },
-  { href: "/dashboard/admins", label: "Admins", icon: Users },
+  { href: "/dashboard/admins", label: "Admins", icon: Users, superAdminOnly: true },
   { href: "/dashboard/users", label: "All Users", icon: UserCircle, superAdminOnly: true },
   { href: "/dashboard/reports", label: "Interview Reports", icon: FileText },
 ];
