@@ -14,8 +14,6 @@ export default function AdminsPage() {
   const { isSuperAdmin } = useAdminAuth();
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAdminIds, setSelectedAdminIds] = useState<string[]>([]);
-  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -31,7 +29,6 @@ export default function AdminsPage() {
       const res = await getAllAdmins();
       console.log("Loaded admins:", res.data);
       setAdmins(res.data || []);
-      setSelectedAdminIds([]);
     } catch (error: any) {
       console.error("Error loading admins:", error);
       toast.error(error.response?.data?.message || "Failed to load admins");
@@ -59,67 +56,6 @@ export default function AdminsPage() {
       console.error("Delete admin error:", error);
       const errorMessage = error.response?.data?.message || error.message || "Failed to delete admin";
       toast.error(errorMessage);
-    }
-  };
-
-  const handleToggleAdmin = (adminId: string) => {
-    setSelectedAdminIds((prev) =>
-      prev.includes(adminId) ? prev.filter((id) => id !== adminId) : [...prev, adminId]
-    );
-  };
-
-  const handleToggleAllAdmins = () => {
-    if (selectedAdminIds.length === admins.filter((a) => !a.isSuperAdmin).length) {
-      setSelectedAdminIds([]);
-    } else {
-      setSelectedAdminIds(
-        admins
-          .filter((a) => !a.isSuperAdmin)
-          .map((a) => String(a._id || a.id))
-      );
-    }
-  };
-
-  const handleBulkDeleteAdmins = async () => {
-    const idsToDelete = selectedAdminIds;
-    if (idsToDelete.length === 0) return;
-
-    const confirmMessage = `⚠️ WARNING: This will PERMANENTLY delete ${idsToDelete.length} admin(s).\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`;
-    const userInput = prompt(confirmMessage);
-
-    if (userInput !== "DELETE") {
-      toast.info("Bulk deletion cancelled");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const results = await Promise.allSettled(
-        idsToDelete.map((id) => deleteAdmin(id))
-      );
-
-      const successCount = results.filter((r) => r.status === "fulfilled").length;
-      const failureCount = results.length - successCount;
-
-      if (successCount > 0) {
-        toast.success(`Deleted ${successCount} admin(s) successfully.`);
-      }
-      if (failureCount > 0) {
-        toast.error(`Failed to delete ${failureCount} admin(s). Check console for details.`);
-        console.error("Bulk delete admins results:", results);
-      }
-
-      setSelectedAdminIds([]);
-      loadAdmins();
-    } catch (error: any) {
-      console.error("Bulk delete admins error:", error);
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to delete selected admins"
-      );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -166,55 +102,6 @@ export default function AdminsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Selection toggle + bulk actions */}
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {selectionMode
-                    ? selectedAdminIds.length > 0
-                      ? `${selectedAdminIds.length} admin(s) selected`
-                      : "Selection mode: choose admins to delete"
-                    : "Bulk selection disabled"}
-                </div>
-                {selectionMode ? (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleBulkDeleteAdmins}
-                      disabled={selectedAdminIds.length === 0 || loading}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete Selected
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectionMode(false);
-                        setSelectedAdminIds([]);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectionMode(true);
-                      setSelectedAdminIds([]);
-                    }}
-                  >
-                    Select
-                  </Button>
-                )}
-              </div>
-
               {loading ? (
                 <div className="text-center py-8">Loading admins...</div>
               ) : admins.length === 0 ? (
@@ -223,64 +110,50 @@ export default function AdminsPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {admins.map((admin) => {
-                    const adminId = String(admin._id || admin.id);
-                    const isDeletable = !admin.isSuperAdmin;
-                    return (
-                      <div
-                        key={adminId}
-                        className="flex justify-between items-center p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          {selectionMode && (
-                            <input
-                              type="checkbox"
-                              aria-label={`Select admin ${admin.name || admin.email}`}
-                              disabled={!isDeletable}
-                              checked={isDeletable && selectedAdminIds.includes(adminId)}
-                              onChange={() => isDeletable && handleToggleAdmin(adminId)}
-                            />
-                          )}
-                          <div>
-                            <h3 className="font-semibold">{admin.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {admin.email} • Role:{" "}
-                              {typeof admin.role === "string"
-                                ? admin.role
-                                : admin.role?.name || "N/A"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {admin.isSuperAdmin && (
-                            <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                              Super Admin
-                            </span>
-                          )}
-                          <Button variant="outline" size="sm">
-                            View Details
-                          </Button>
-                          {isDeletable && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (!adminId) {
-                                  toast.error("Admin ID not found");
-                                  return;
-                                }
-                                handleDeleteAdmin(String(adminId), admin.name);
-                              }}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
-                            </Button>
-                          )}
-                        </div>
+                  {admins.map((admin) => (
+                    <div
+                      key={admin._id || admin.id}
+                      className="flex justify-between items-center p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div>
+                        <h3 className="font-semibold">{admin.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {admin.email} • Role:{" "}
+                          {typeof admin.role === "string"
+                            ? admin.role
+                            : admin.role?.name || "N/A"}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <div className="flex items-center space-x-2">
+                        {admin.isSuperAdmin && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                            Super Admin
+                          </span>
+                        )}
+                        <Button variant="outline" size="sm">
+                          View Details
+                        </Button>
+                        {!admin.isSuperAdmin && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              const adminId = admin._id || admin.id;
+                              if (!adminId) {
+                                toast.error("Admin ID not found");
+                                return;
+                              }
+                              handleDeleteAdmin(String(adminId), admin.name);
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
