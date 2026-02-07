@@ -462,16 +462,7 @@ Bob Wilson,EMP001,bob@example.com,3`;
                             {user.licenses || 0}
                           </span>
                         </div>
-                </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteUser(user._id)}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

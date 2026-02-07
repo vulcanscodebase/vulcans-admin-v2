@@ -23,6 +23,8 @@ export default function UsersPage() {
     total: 0,
     pages: 0,
   });
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -41,9 +43,53 @@ export default function UsersPage() {
         total: res.data?.pagination?.total || 0,
         pages: res.data?.pagination?.pages || 0,
       });
+      setSelectedUserIds([]);
     } catch (error: any) {
       console.error("Error loading users:", error);
       toast.error(error.response?.data?.message || "Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleUser = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleBulkDeleteUsers = async () => {
+    if (selectedUserIds.length === 0) return;
+
+    const confirmMessage = `⚠️ WARNING: This will PERMANENTLY delete ${selectedUserIds.length} user(s).\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`;
+    const userInput = prompt(confirmMessage);
+
+    if (userInput !== "DELETE") {
+      toast.info("User deletion cancelled");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await Promise.allSettled(
+        selectedUserIds.map((id) => deleteUser(id))
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failureCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} user(s) successfully.`);
+      }
+      if (failureCount > 0) {
+        toast.error(`Failed to delete ${failureCount} user(s).`);
+      }
+
+      setSelectedUserIds([]);
+      setSelectionMode(false);
+      loadUsers();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to delete users");
     } finally {
       setLoading(false);
     }
@@ -117,6 +163,55 @@ export default function UsersPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Selection toggle + bulk actions */}
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {selectionMode
+                    ? selectedUserIds.length > 0
+                      ? `${selectedUserIds.length} user(s) selected`
+                      : "Selection mode: choose users to delete"
+                    : "Bulk selection disabled"}
+                </div>
+                {selectionMode ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDeleteUsers}
+                      disabled={selectedUserIds.length === 0 || loading}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectionMode(false);
+                        setSelectedUserIds([]);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectionMode(true);
+                      setSelectedUserIds([]);
+                    }}
+                  >
+                    Select
+                  </Button>
+                )}
+              </div>
+
               {/* Search and Filters */}
               <div className="mb-6 space-y-4">
                 <form onSubmit={handleSearch} className="flex gap-2">
@@ -181,6 +276,11 @@ export default function UsersPage() {
                     <table className="w-full">
                       <thead className="bg-muted/50">
                         <tr>
+                              {selectionMode && (
+                                <th className="px-4 py-3 text-left">
+                                  <span className="sr-only">Select</span>
+                                </th>
+                              )}
                           <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             User
                           </th>
@@ -205,9 +305,21 @@ export default function UsersPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-card divide-y divide-border">
-                        {users.map((user) => (
-                          <tr key={user._id || user.id} className="hover:bg-muted/50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            {users.map((user) => {
+                              const userId = user._id || user.id;
+                              return (
+                                <tr key={userId} className="hover:bg-muted/50 transition-colors">
+                                  {selectionMode && (
+                                    <td className="px-4 py-4">
+                                      <input
+                                        type="checkbox"
+                                        aria-label={`Select user ${user.name}`}
+                                        checked={selectedUserIds.includes(String(userId))}
+                                        onChange={() => handleToggleUser(String(userId))}
+                                      />
+                                    </td>
+                                  )}
+                                  <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10 rounded-full bg-vulcan-accent-blue/10 flex items-center justify-center">
                                   <User className="h-5 w-5 text-vulcan-accent-blue" />
@@ -281,7 +393,8 @@ export default function UsersPage() {
                               </Button>
                             </td>
                           </tr>
-                        ))}
+                              );
+                            })}
                       </tbody>
                     </table>
                   </div>
