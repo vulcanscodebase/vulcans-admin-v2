@@ -133,6 +133,41 @@ export default function ReportsPage() {
     }
   };
 
+  const handleBulkDeleteInterviews = async () => {
+    if (selectedInterviews.size === 0) {
+      toast.error("Please select at least one interview");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedInterviews.size} interview(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await Promise.allSettled(
+        Array.from(selectedInterviews).map((id) => deleteInterview(id))
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failureCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} interview(s) successfully.`);
+      }
+      if (failureCount > 0) {
+        toast.error(`Failed to delete ${failureCount} interview(s).`);
+      }
+
+      setSelectedInterviews(new Set());
+      loadReports();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to delete interviews");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredInterviews = interviews; // Filtering now done on backend
 
   const handleSelectAll = (checked: boolean) => {
@@ -371,7 +406,16 @@ export default function ReportsPage() {
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      {isGeneratingPDF ? "Downloading..." : "Download Selected PDFs"}
+                      {isGeneratingPDF ? "Downloading..." : "Download PDFs"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleBulkDeleteInterviews}
+                      disabled={loading}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Selected
                     </Button>
                     <Button
                       variant="outline"

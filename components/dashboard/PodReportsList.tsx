@@ -45,6 +45,8 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -54,13 +56,14 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
     try {
       setLoading(true);
       const res = await getPodInterviewReports(podId, page, 50, statusFilter || undefined);
-      console.log("Pod reports response:", res.data); // Debug log
+      console.log("Pod reports response:", res.data);
       const interviews = res.data?.interviews || [];
-      console.log("Interviews found:", interviews.length); // Debug log
+      console.log("Interviews found:", interviews.length);
       setInterviews(interviews);
       setTotalPages(res.data?.pagination?.pages || 1);
+      setSelectedReportIds([]);
     } catch (error: any) {
-      console.error("Error loading pod reports:", error); // Debug log
+      console.error("Error loading pod reports:", error);
       const errorMessage = error.response?.data?.message || error.message || "Failed to load reports";
       toast.error(errorMessage);
       setInterviews([]);
@@ -111,6 +114,55 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
     }
   };
 
+  const handleToggleReport = (reportId: string) => {
+    setSelectedReportIds((prev) =>
+      prev.includes(reportId) ? prev.filter((id) => id !== reportId) : [...prev, reportId]
+    );
+  };
+
+  const handleToggleAllReports = () => {
+    if (selectedReportIds.length === interviews.length) {
+      setSelectedReportIds([]);
+    } else {
+      setSelectedReportIds(interviews.map((i) => String(i._id)));
+    }
+  };
+
+  const handleBulkDeleteReports = async () => {
+    if (selectedReportIds.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selectedReportIds.length} interview report(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await Promise.allSettled(
+        selectedReportIds.map((id) => deleteInterview(id))
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failureCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} interview report(s) successfully.`);
+      }
+      if (failureCount > 0) {
+        toast.error(`Failed to delete ${failureCount} interview report(s).`);
+        console.error("Bulk delete reports results:", results);
+      }
+
+      setSelectedReportIds([]);
+      setSelectionMode(false);
+      loadReports();
+    } catch (error: any) {
+      console.error("Bulk delete reports error:", error);
+      toast.error(error?.response?.data?.message || "Failed to delete selected reports");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -146,6 +198,55 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
           </select>
         </div>
 
+        {/* Selection toggle + bulk actions */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {selectionMode
+              ? selectedReportIds.length > 0
+                ? `${selectedReportIds.length} report(s) selected`
+                : "Selection mode: choose reports to delete"
+              : "Bulk selection disabled"}
+          </div>
+          {selectionMode ? (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteReports}
+                disabled={selectedReportIds.length === 0 || loading}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedReportIds([]);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectionMode(true);
+                setSelectedReportIds([]);
+              }}
+            >
+              Select
+            </Button>
+          )}
+        </div>
+
         {/* Reports List */}
         {interviews.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -153,85 +254,99 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {interviews.map((interview) => (
-              <div
-                key={interview._id}
-                className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">
-                        {interview.jobRole || "General Interview"}
-                      </h3>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          interview.status
-                        )}`}
-                      >
-                        {interview.status}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>
-                          {interview.userId?.name || interview.userId?.email || "Unknown"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{formatDate(interview.startedAt)}</span>
-                      </div>
-                      {interview.completedAt && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          <span>Completed: {formatDate(interview.completedAt)}</span>
-                        </div>
+              {interviews.map((interview) => {
+                const reportId = String(interview._id);
+                return (
+                  <div
+                  key={reportId}
+                  className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      {selectionMode && (
+                        <input
+                          type="checkbox"
+                          aria-label={`Select report ${interview.jobRole || "General Interview"}`}
+                          checked={selectedReportIds.includes(reportId)}
+                          onChange={() => handleToggleReport(reportId)}
+                          className="mt-1"
+                        />
                       )}
-                      {interview.report?.metrics && (
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4" />
-                          <span>
-                            Score:{" "}
-                            {Math.round(
-                              ((interview.report.metrics.avgConfidence || 0) +
-                                (interview.report.metrics.avgBodyLanguage || 0) +
-                                (interview.report.metrics.avgKnowledge || 0) +
-                                (interview.report.metrics.avgSkillRelevance || 0) +
-                                (interview.report.metrics.avgFluency || 0)) /
-                                5
-                            )}
-                            /100
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-lg">
+                            {interview.jobRole || "General Interview"}
+                          </h3>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                              interview.status
+                            )}`}
+                          >
+                            {interview.status}
                           </span>
                         </div>
-                      )}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span>
+                              {interview.userId?.name || interview.userId?.email || "Unknown"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            <span>{formatDate(interview.startedAt)}</span>
+                          </div>
+                          {interview.completedAt && (
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4" />
+                              <span>Completed: {formatDate(interview.completedAt)}</span>
+                            </div>
+                          )}
+                          {interview.report?.metrics && (
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="h-4 w-4" />
+                              <span>
+                                Score:{" "}
+                                {Math.round(
+                                  ((interview.report.metrics.avgConfidence || 0) +
+                                    (interview.report.metrics.avgBodyLanguage || 0) +
+                                    (interview.report.metrics.avgKnowledge || 0) +
+                                    (interview.report.metrics.avgSkillRelevance || 0) +
+                                    (interview.report.metrics.avgFluency || 0)) /
+                                  5
+                                )}
+                                /100
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDetails(interview._id)}
+                        disabled={interview.status !== "completed"}
+                        title={interview.status !== "completed" ? "View is only available for completed interviews" : "View interview details"}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteInterview(interview._id, interview.jobRole || "General Interview")}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewDetails(interview._id)}
-                      disabled={interview.status !== "completed"}
-                      title={interview.status !== "completed" ? "View is only available for completed interviews" : "View interview details"}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteInterview(interview._id, interview.jobRole || "General Interview")}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -261,4 +376,3 @@ export default function PodReportsList({ podId }: PodReportsListProps) {
     </Card>
   );
 }
-

@@ -14,6 +14,8 @@ export default function AdminsPage() {
   const { isSuperAdmin } = useAdminAuth();
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAdminIds, setSelectedAdminIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) {
@@ -29,9 +31,49 @@ export default function AdminsPage() {
       const res = await getAllAdmins();
       console.log("Loaded admins:", res.data);
       setAdmins(res.data || []);
+      setSelectedAdminIds([]);
     } catch (error: any) {
       console.error("Error loading admins:", error);
       toast.error(error.response?.data?.message || "Failed to load admins");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleAdmin = (adminId: string) => {
+    setSelectedAdminIds((prev) =>
+      prev.includes(adminId) ? prev.filter((id) => id !== adminId) : [...prev, adminId]
+    );
+  };
+
+  const handleBulkDeleteAdmins = async () => {
+    if (selectedAdminIds.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selectedAdminIds.length} admin(s)?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await Promise.allSettled(
+        selectedAdminIds.map((id) => deleteAdmin(id))
+      );
+
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failureCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} admin(s) successfully.`);
+      }
+      if (failureCount > 0) {
+        toast.error(`Failed to delete ${failureCount} admin(s).`);
+      }
+
+      setSelectedAdminIds([]);
+      setSelectionMode(false);
+      loadAdmins();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to delete admins");
     } finally {
       setLoading(false);
     }
@@ -102,6 +144,55 @@ export default function AdminsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Selection toggle + bulk actions */}
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {selectionMode
+                    ? selectedAdminIds.length > 0
+                      ? `${selectedAdminIds.length} admin(s) selected`
+                      : "Selection mode: choose admins to delete"
+                    : "Bulk selection disabled"}
+                </div>
+                {selectionMode ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDeleteAdmins}
+                      disabled={selectedAdminIds.length === 0 || loading}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectionMode(false);
+                        setSelectedAdminIds([]);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectionMode(true);
+                      setSelectedAdminIds([]);
+                    }}
+                  >
+                    Select
+                  </Button>
+                )}
+              </div>
+
               {loading ? (
                 <div className="text-center py-8">Loading admins...</div>
               ) : admins.length === 0 ? (
@@ -110,20 +201,32 @@ export default function AdminsPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {admins.map((admin) => (
-                    <div
-                      key={admin._id || admin.id}
-                      className="flex justify-between items-center p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div>
-                        <h3 className="font-semibold">{admin.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {admin.email} • Role:{" "}
-                          {typeof admin.role === "string"
-                            ? admin.role
-                            : admin.role?.name || "N/A"}
-                        </p>
-                      </div>
+                      {admins.map((admin) => {
+                        const adminId = admin._id || admin.id;
+                        return (
+                          <div
+                            key={adminId}
+                            className="flex justify-between items-center p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              {selectionMode && !admin.isSuperAdmin && (
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select admin ${admin.name}`}
+                                  checked={selectedAdminIds.includes(String(adminId))}
+                                  onChange={() => handleToggleAdmin(String(adminId))}
+                                />
+                              )}
+                              <div>
+                                <h3 className="font-semibold">{admin.name}</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {admin.email} • Role:{" "}
+                                  {typeof admin.role === "string"
+                                    ? admin.role
+                                    : admin.role?.name || "N/A"}
+                                </p>
+                              </div>
+                            </div>
                       <div className="flex items-center space-x-2">
                         {admin.isSuperAdmin && (
                           <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
@@ -153,7 +256,8 @@ export default function AdminsPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                        );
+                      })}
                 </div>
               )}
             </CardContent>
