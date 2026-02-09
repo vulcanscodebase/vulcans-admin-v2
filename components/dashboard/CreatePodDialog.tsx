@@ -150,7 +150,7 @@ export default function CreatePodDialog({ open, onClose, onSuccess }: CreatePodD
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={loading} className="flex-1">
+              <Button type="submit" disabled={loading} className="flex-1 bg-vulcan-accent-blue hover:bg-vulcan-accent-blue/90 text-white">
                 {loading ? "Creating..." : "Create Pod"}
               </Button>
               <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
