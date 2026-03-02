@@ -84,6 +84,12 @@ const InterviewReportPDF = ({
   );
 
   // Enhanced questions section with metrics and feedback
+  const MAX_STARS = 10;
+  const toTenStars = (val: number) => {
+    if (typeof val !== 'number' || isNaN(val)) return 0;
+    return Math.min(10, Math.max(0, Math.round(val)));
+  };
+
   const questionsSection = allQuestionData && allQuestionData.length > 0 
     ? React.createElement(View, { style: styles.section },
         React.createElement(Text, { style: styles.heading }, 'Question-by-Question Analysis'),
@@ -97,29 +103,29 @@ const InterviewReportPDF = ({
             ),
           ];
 
-          // Add metrics if available
+          // Add metrics if available (display on 0-10 scale)
           if (q.metrics) {
             const metricsElements = [
               React.createElement(View, { key: 'metrics-row', style: styles.metricsRow },
                 React.createElement(View, { style: styles.metricItem },
                   React.createElement(Text, { style: styles.metricLabel }, 'Confidence'),
-                  React.createElement(Text, { style: styles.metricValue }, `${Math.round(q.metrics.confidence || 0)}/5`)
+                  React.createElement(Text, { style: styles.metricValue }, `${toTenStars(q.metrics.confidence || 0)}/${MAX_STARS}`)
                 ),
                 React.createElement(View, { style: styles.metricItem },
                   React.createElement(Text, { style: styles.metricLabel }, 'Body Language'),
-                  React.createElement(Text, { style: styles.metricValue }, `${Math.round(q.metrics.bodyLanguage || 0)}/5`)
+                  React.createElement(Text, { style: styles.metricValue }, `${toTenStars(q.metrics.bodyLanguage || 0)}/${MAX_STARS}`)
                 ),
                 React.createElement(View, { style: styles.metricItem },
                   React.createElement(Text, { style: styles.metricLabel }, 'Knowledge'),
-                  React.createElement(Text, { style: styles.metricValue }, `${Math.round(q.metrics.knowledge || 0)}/5`)
+                  React.createElement(Text, { style: styles.metricValue }, `${toTenStars(q.metrics.knowledge || 0)}/${MAX_STARS}`)
                 ),
                 React.createElement(View, { style: styles.metricItem },
                   React.createElement(Text, { style: styles.metricLabel }, 'Fluency'),
-                  React.createElement(Text, { style: styles.metricValue }, `${Math.round(q.metrics.fluency || 0)}/5`)
+                  React.createElement(Text, { style: styles.metricValue }, `${toTenStars(q.metrics.fluency || 0)}/${MAX_STARS}`)
                 ),
                 React.createElement(View, { style: styles.metricItem },
                   React.createElement(Text, { style: styles.metricLabel }, 'Skill Relevance'),
-                  React.createElement(Text, { style: styles.metricValue }, `${Math.round(q.metrics.skillRelevance || 0)}/5`)
+                  React.createElement(Text, { style: styles.metricValue }, `${toTenStars(q.metrics.skillRelevance || 0)}/${MAX_STARS}`)
                 ),
               )
             ];
