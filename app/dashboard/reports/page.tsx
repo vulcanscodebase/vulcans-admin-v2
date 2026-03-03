@@ -241,6 +241,44 @@ export default function ReportsPage() {
         new Date().getMonth() + 1
       ).padStart(2, "0")}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
 
+      // Calculate performance summary from question data — EXACT SAME as user's computePerformanceSummary
+      const questionsArr = fullInterview.questionsData || [];
+      let performanceSummaryData = null;
+      if (questionsArr.length > 0) {
+        const MAX_STARS_PDF = 10;
+        const toTen = (val: number) => {
+          if (typeof val !== 'number' || isNaN(val)) return 0;
+          return Math.min(10, Math.max(0, Math.round(val)));
+        };
+        let totalConfidence = 0, totalKnowledge = 0, totalFluency = 0, totalSkillRelevance = 0;
+        questionsArr.forEach((q: any) => {
+          const m = q.metrics;
+          if (m) {
+            totalConfidence += toTen(m.confidence || 0);
+            totalKnowledge += toTen(m.knowledge || 0);
+            totalFluency += toTen(m.fluency || 0);
+            totalSkillRelevance += toTen(m.skillRelevance || 0);
+          }
+        });
+        // Only 4 factors (Confidence, Knowledge, Fluency, Skill Relevance) — excludes Body Language
+        const totalScore = totalConfidence + totalKnowledge + totalFluency + totalSkillRelevance;
+        const totalPossible = MAX_STARS_PDF * 4 * questionsArr.length;
+        const percentageScore = (totalScore / totalPossible) * 100;
+
+        let grade = 'Re-take interview';
+        if (percentageScore >= 70) grade = 'Excellent';
+        else if (percentageScore >= 60) grade = 'Good';
+        else if (percentageScore >= 50) grade = 'Average';
+        else if (percentageScore >= 40) grade = 'Below Average';
+
+        performanceSummaryData = {
+          score: totalScore,
+          outOf: totalPossible,
+          percentage: percentageScore.toFixed(2),
+          grade,
+        };
+      }
+
       const pdfData = {
         reportDate: new Date().toLocaleDateString(),
         downloadTimestamp: new Date().toLocaleString(),
@@ -252,6 +290,12 @@ export default function ReportsPage() {
         feedback: feedbackText,
         resumeAnalysis: resumeAnalysisText,
         reportType: 'admin',
+        performanceSummary: performanceSummaryData,
+        feedbackSections: {
+          strengths: fullInterview.report?.strengths || [],
+          improvements: fullInterview.report?.improvements || [],
+          tips: fullInterview.report?.tips || [],
+        },
       };
 
       // Call admin API's generate-pdf endpoint
@@ -513,15 +557,13 @@ export default function ReportsPage() {
                                 <Briefcase className="h-4 w-4" />
                                 <span>
                                   Score:{" "}
-                                  {Math.round(
-                                    ((interview.report.metrics.avgConfidence || 0) +
-                                      (interview.report.metrics.avgBodyLanguage || 0) +
-                                      (interview.report.metrics.avgKnowledge || 0) +
-                                      (interview.report.metrics.avgSkillRelevance || 0) +
-                                      (interview.report.metrics.avgFluency || 0)) /
-                                      5
-                                  )}
-                                  /100
+                                      {(() => {
+                                        const m = interview.report!.metrics!;
+                                        const toTen = (v: number) => Math.min(10, Math.max(0, Math.round(v || 0)));
+                                        const total = toTen(m.avgConfidence || 0) + toTen(m.avgKnowledge || 0) + toTen(m.avgFluency || 0) + toTen(m.avgSkillRelevance || 0);
+                                        const outOf = 4 * 10;
+                                        return ((total / outOf) * 100).toFixed(0);
+                                      })()}%
                                 </span>
                               </div>
                             )}
