@@ -80,27 +80,69 @@ export default function InterviewDetailPage() {
     });
   };
 
-  const calculateOverallScore = (metrics?: any) => {
-    if (!metrics) return 0;
-    const {
-      avgConfidence = 0,
-      avgBodyLanguage = 0,
-      avgKnowledge = 0,
-      avgSkillRelevance = 0,
-      avgFluency = 0,
-    } = metrics;
-    const total =
-      avgConfidence + avgBodyLanguage + avgKnowledge + avgSkillRelevance + avgFluency;
-    return Math.round((total / 25) * 100);
+  const MAX_STARS = 10;
+  const toTenStars = (val: number) => {
+    if (typeof val !== 'number' || isNaN(val)) return 0;
+    return Math.min(10, Math.max(0, Math.round(val)));
   };
 
-  const StarRating = ({ value }: { value: number }) => {
+  // Same calculation as user's computePerformanceSummary — 4 metrics, exclude Body Language
+  const computePerformanceSummary = (questionsData?: any[]) => {
+    if (!questionsData || questionsData.length === 0) return null;
+
+    const numQuestions = questionsData.length;
+    let totalConfidence = 0, totalBodyLanguage = 0, totalKnowledge = 0, totalFluency = 0, totalSkillRelevance = 0;
+
+    questionsData.forEach((q: any) => {
+      totalConfidence += toTenStars(q.metrics?.confidence || 0);
+      totalBodyLanguage += toTenStars(q.metrics?.bodyLanguage || 0);
+      totalKnowledge += toTenStars(q.metrics?.knowledge || 0);
+      totalFluency += toTenStars(q.metrics?.fluency || 0);
+      totalSkillRelevance += toTenStars(q.metrics?.skillRelevance || 0);
+    });
+
+    const totalScore = totalConfidence + totalKnowledge + totalFluency + totalSkillRelevance;
+    const totalPossible = MAX_STARS * 4 * numQuestions;
+    const percentageScore = (totalScore / totalPossible) * 100;
+
+    let grade = 'Re-take interview';
+    if (percentageScore >= 70) grade = 'Excellent';
+    else if (percentageScore >= 60) grade = 'Good';
+    else if (percentageScore >= 50) grade = 'Average';
+    else if (percentageScore >= 40) grade = 'Below Average';
+
+    return {
+      confidence: Math.round(totalConfidence / numQuestions),
+      bodyLanguage: Math.round(totalBodyLanguage / numQuestions),
+      knowledge: Math.round(totalKnowledge / numQuestions),
+      fluency: Math.round(totalFluency / numQuestions),
+      skillRelevance: Math.round(totalSkillRelevance / numQuestions),
+      score: totalScore,
+      outOf: totalPossible,
+      percentage: percentageScore.toFixed(2),
+      grade,
+    };
+  };
+
+  const performanceSummary = interview ? computePerformanceSummary(interview.questionsData) : null;
+
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case 'Excellent': return 'text-green-600';
+      case 'Good': return 'text-blue-600';
+      case 'Average': return 'text-yellow-600';
+      case 'Below Average': return 'text-orange-600';
+      default: return 'text-red-600';
+    }
+  };
+
+  const StarRating = ({ value, max = 10 }: { value: number; max?: number }) => {
     return (
-      <div className="flex space-x-1">
-        {Array.from({ length: 5 }, (_, i) => (
+      <div className="flex space-x-0.5">
+        {Array.from({ length: max }, (_, i) => (
           <Star
             key={i}
-            className={`h-4 w-4 ${
+            className={`h-3 w-3 ${
               i < value ? "text-blue-500 fill-blue-500" : "text-gray-300"
             }`}
           />
@@ -268,53 +310,59 @@ export default function InterviewDetailPage() {
                   <CardDescription>Summary of interview performance metrics</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                      <div className="text-center p-6 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                        <div className="text-3xl font-bold mb-2">
+                          {performanceSummary ? `${performanceSummary.score}/${performanceSummary.outOf}` : '0/0'}
+                        </div>
+                        <p className="text-muted-foreground">Overall Score</p>
+                      </div>
                     <div className="text-center p-6 rounded-lg bg-blue-50 dark:bg-blue-900/20">
                       <div className="text-4xl font-bold mb-2">
-                        {calculateOverallScore(interview.report?.metrics)}%
+                          {performanceSummary?.percentage || '0.00'}%
                       </div>
-                      <p className="text-muted-foreground">Overall Score</p>
+                        <p className="text-muted-foreground">Percentage</p>
                     </div>
                     <div className="text-center p-6 rounded-lg bg-green-50 dark:bg-green-900/20">
-                      <div className="text-4xl font-bold mb-2">
-                        {interview.report?.metrics?.totalQuestions || 0}
+                        <div className={`text-2xl font-bold mb-2 ${performanceSummary ? getGradeColor(performanceSummary.grade) : 'text-gray-500'}`}>
+                          {performanceSummary?.grade || 'N/A'}
                       </div>
-                      <p className="text-muted-foreground">Questions Answered</p>
+                        <p className="text-muted-foreground">Grade</p>
                     </div>
                     <div className="text-center p-6 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                       <div className="text-4xl font-bold mb-2">
-                        {interview.status === "completed" ? "✓" : "○"}
+                          {interview.report?.metrics?.totalQuestions || 0}
                       </div>
-                      <p className="text-muted-foreground">Status: {interview.status}</p>
+                        <p className="text-muted-foreground">Questions Answered</p>
                     </div>
                   </div>
 
-                  {/* Detailed Metrics */}
+                    {/* Detailed Metrics - 10 star scale */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     {[
                       {
                         label: "Confidence",
-                        value: Math.round(interview.report?.metrics?.avgConfidence || 0),
+                        value: performanceSummary?.confidence ?? toTenStars(interview.report?.metrics?.avgConfidence || 0),
                         icon: <TrendingUp className="w-5 h-5" />,
                       },
                       {
                         label: "Body Language",
-                        value: Math.round(interview.report?.metrics?.avgBodyLanguage || 0),
+                        value: performanceSummary?.bodyLanguage ?? toTenStars(interview.report?.metrics?.avgBodyLanguage || 0),
                         icon: <User className="w-5 h-5" />,
                       },
                       {
                         label: "Knowledge",
-                        value: Math.round(interview.report?.metrics?.avgKnowledge || 0),
+                        value: performanceSummary?.knowledge ?? toTenStars(interview.report?.metrics?.avgKnowledge || 0),
                         icon: <Lightbulb className="w-5 h-5" />,
                       },
                       {
                         label: "Fluency",
-                        value: Math.round(interview.report?.metrics?.avgFluency || 0),
+                        value: performanceSummary?.fluency ?? toTenStars(interview.report?.metrics?.avgFluency || 0),
                         icon: <MessageSquare className="w-5 h-5" />,
                       },
                       {
                         label: "Skill Relevance",
-                        value: Math.round(interview.report?.metrics?.avgSkillRelevance || 0),
+                        value: performanceSummary?.skillRelevance ?? toTenStars(interview.report?.metrics?.avgSkillRelevance || 0),
                         icon: <Target className="w-5 h-5" />,
                       },
                     ].map((metric) => (
@@ -323,8 +371,8 @@ export default function InterviewDetailPage() {
                           {metric.icon}
                           <span className="text-sm font-medium">{metric.label}</span>
                         </div>
-                        <StarRating value={metric.value} />
-                        <p className="text-xs text-muted-foreground mt-1">{metric.value}/5</p>
+                        <StarRating value={metric.value} max={10} />
+                        <p className="text-xs text-muted-foreground mt-1">{metric.value}/{MAX_STARS}</p>
                       </div>
                     ))}
                   </div>

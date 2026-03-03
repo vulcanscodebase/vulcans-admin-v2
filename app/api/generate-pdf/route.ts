@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { Document, Page, Text, View, StyleSheet, pdf, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, pdf, Image, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 import { join } from "path";
 import { readFileSync } from "fs";
@@ -17,30 +17,38 @@ const InterviewReportPDF = ({
   allQuestionData, 
   feedback, 
   resumeAnalysis,
-  reportType = 'admin'
+  reportType = 'admin',
+  performanceSummary = null,
+  feedbackSections = null,
 }: any) => {
   const styles = StyleSheet.create({
-    page: { padding: 30, fontSize: 12, fontFamily: 'Helvetica' },
-    header: { marginBottom: 20, alignItems: 'center' },
-    logoContainer: { marginBottom: 10, alignItems: 'center' },
-    logo: { width: 80, height: 80 },
-    companyName: { fontSize: 28, fontWeight: 'bold', color: '#2563eb', marginTop: 10 },
-    title: { fontSize: 24, marginBottom: 10, textAlign: 'center', fontWeight: 'bold' },
-    subtitle: { fontSize: 14, marginBottom: 15, textAlign: 'center', color: '#666' },
-    section: { marginBottom: 15 },
-    heading: { fontSize: 16, marginBottom: 10, fontWeight: 'bold', color: '#2563eb' },
-    text: { marginBottom: 5, lineHeight: 1.5 },
-    bold: { fontWeight: 'bold' },
-    infoGrid: { flexDirection: 'row', marginBottom: 20, padding: 15, backgroundColor: '#f3f4f6', borderRadius: 5 },
-    infoItem: { flex: 1, marginRight: 15 },
-    infoLabel: { fontSize: 10, color: '#666', marginBottom: 3 },
-    infoValue: { fontSize: 12, fontWeight: 'bold' },
-    questionContainer: { marginBottom: 15, padding: 10, backgroundColor: '#f9fafb', borderRadius: 5 },
-    metricsRow: { flexDirection: 'row', marginTop: 8, marginBottom: 8, flexWrap: 'wrap' },
-    metricItem: { width: '18%', marginRight: '2%', padding: 5, backgroundColor: '#fff', borderRadius: 3 },
-    metricLabel: { fontSize: 8, color: '#666', marginBottom: 2 },
-    metricValue: { fontSize: 10, fontWeight: 'bold' },
-    feedbackBox: { marginTop: 8, padding: 8, backgroundColor: '#f3f4f6', borderRadius: 3 },
+    page: { padding: 30, fontSize: 11, fontFamily: 'Helvetica' },
+    header: { marginBottom: 15, alignItems: 'center' },
+    logoContainer: { marginBottom: 8, alignItems: 'center' },
+    logo: { width: 70, height: 70 },
+    companyName: { fontSize: 26, fontWeight: 'bold', color: '#2563eb', marginTop: 8 },
+    title: { fontSize: 22, marginBottom: 8, textAlign: 'center', fontWeight: 'bold' },
+    subtitle: { fontSize: 12, marginBottom: 10, textAlign: 'center', color: '#666' },
+    section: { marginBottom: 10 },
+    heading: { fontSize: 14, marginBottom: 8, fontWeight: 'bold', color: '#2563eb' },
+    text: { marginBottom: 3, lineHeight: 1.4 },
+    bold: { fontWeight: 'bold', fontSize: 11 },
+    infoGrid: { flexDirection: 'row', marginBottom: 15, padding: 10, backgroundColor: '#f3f4f6', borderRadius: 5 },
+    infoItem: { flex: 1, marginRight: 10 },
+    infoLabel: { fontSize: 9, color: '#666', marginBottom: 2 },
+    infoValue: { fontSize: 11, fontWeight: 'bold' },
+    questionContainer: { marginBottom: 6, padding: 8, backgroundColor: '#f9fafb', borderRadius: 4 },
+    metricsRow: { flexDirection: 'row', marginTop: 5, marginBottom: 5, flexWrap: 'wrap' },
+    metricItem: { width: '18%', marginRight: '2%', padding: 4, backgroundColor: '#fff', borderRadius: 3 },
+    metricLabel: { fontSize: 7, color: '#666', marginBottom: 1 },
+    metricValue: { fontSize: 9, fontWeight: 'bold' },
+    performanceSummaryBox: { marginBottom: 10, padding: 10, backgroundColor: '#eff6ff', borderRadius: 5, borderWidth: 1, borderColor: '#2563eb' },
+    performanceSummaryRow: { flexDirection: 'row', marginTop: 3 },
+    performanceSummaryLabel: { fontSize: 10, color: '#1e40af', marginRight: 8, fontWeight: 'bold' },
+    performanceSummaryValue: { fontSize: 12, fontWeight: 'bold', color: '#1e3a8a' },
+    feedbackBox: { marginTop: 5, padding: 6, backgroundColor: '#f3f4f6', borderRadius: 3 },
+    feedbackSubHeading: { fontSize: 13, fontWeight: 'bold', color: '#1e3a8a', marginBottom: 5, marginTop: 8 },
+    feedbackListItem: { marginBottom: 3, lineHeight: 1.4, fontSize: 10 },
     timestamp: { fontSize: 9, color: '#999', textAlign: 'center', marginTop: 5 },
   });
 
@@ -83,22 +91,40 @@ const InterviewReportPDF = ({
     )
   );
 
-  // Enhanced questions section with metrics and feedback
+  const performanceSummarySection = performanceSummary
+    ? React.createElement(View, { style: styles.performanceSummaryBox },
+      React.createElement(Text, { style: styles.heading }, 'Performance Summary'),
+      React.createElement(View, { style: styles.performanceSummaryRow },
+        React.createElement(Text, { style: styles.performanceSummaryLabel }, 'Overall Score:'),
+        React.createElement(Text, { style: styles.performanceSummaryValue }, `${performanceSummary.score}/${performanceSummary.outOf}`)
+      ),
+      React.createElement(View, { style: styles.performanceSummaryRow },
+        React.createElement(Text, { style: styles.performanceSummaryLabel }, 'Percentage:'),
+        React.createElement(Text, { style: styles.performanceSummaryValue }, `${performanceSummary.percentage}%`)
+      ),
+      React.createElement(View, { style: styles.performanceSummaryRow },
+        React.createElement(Text, { style: styles.performanceSummaryLabel }, 'Grade:'),
+        React.createElement(Text, { style: styles.performanceSummaryValue }, performanceSummary.grade || 'N/A')
+      )
+    )
+    : null;
+
   const MAX_STARS = 10;
   const toTenStars = (val: number) => {
     if (typeof val !== 'number' || isNaN(val)) return 0;
     return Math.min(10, Math.max(0, Math.round(val)));
   };
 
+  // Enhanced questions section with metrics and feedback
   const questionsSection = allQuestionData && allQuestionData.length > 0 
     ? React.createElement(View, { style: styles.section },
         React.createElement(Text, { style: styles.heading }, 'Question-by-Question Analysis'),
         ...allQuestionData.map((q: any, i: number) => {
           const questionElements: any[] = [
-            React.createElement(Text, { key: 'q-title', style: styles.bold }, 
+            React.createElement(Text, { key: 'q-title', style: styles.bold, minPresenceAhead: 80 }, 
               `Question ${q.questionNumber || i + 1}: ${q.question}`
             ),
-            React.createElement(Text, { key: 'q-answer', style: styles.text }, 
+            React.createElement(Text, { key: 'q-answer', style: { ...styles.text, fontSize: 10 } }, 
               `Answer: ${q.answer || 'No answer provided'}`
             ),
           ];
@@ -135,8 +161,8 @@ const InterviewReportPDF = ({
             if (q.metrics.feedback) {
               questionElements.push(
                 React.createElement(View, { key: 'feedback-box', style: styles.feedbackBox },
-                  React.createElement(Text, { style: { ...styles.text, fontSize: 10, fontWeight: 'bold' } }, 'AI Feedback:'),
-                  React.createElement(Text, { style: styles.text }, q.metrics.feedback)
+                  React.createElement(Text, { style: { ...styles.text, fontSize: 9, fontWeight: 'bold' } }, 'AI Feedback:'),
+                  React.createElement(Text, { style: { ...styles.text, fontSize: 9 } }, q.metrics.feedback)
                 )
               );
             }
@@ -168,9 +194,39 @@ const InterviewReportPDF = ({
 
       candidateSection,
 
+      performanceSummarySection,
+
       React.createElement(View, { style: styles.section },
         React.createElement(Text, { style: styles.heading }, 'Overall Feedback'),
-        React.createElement(Text, { style: styles.text }, feedback || 'No feedback available')
+        // Render Strengths, Areas for Improvement, Tips as separate styled sections
+        ...(feedbackSections?.strengths && feedbackSections.strengths.length > 0
+          ? [
+            React.createElement(Text, { key: 'str-heading', style: styles.feedbackSubHeading }, 'Strengths:'),
+            ...feedbackSections.strengths.map((s: string, i: number) =>
+              React.createElement(Text, { key: `str-${i}`, style: styles.feedbackListItem }, `${i + 1}. ${s}`)
+            ),
+          ]
+          : []),
+        ...(feedbackSections?.improvements && feedbackSections.improvements.length > 0
+          ? [
+            React.createElement(Text, { key: 'imp-heading', style: styles.feedbackSubHeading }, 'Areas for Improvement:'),
+            ...feedbackSections.improvements.map((s: string, i: number) =>
+              React.createElement(Text, { key: `imp-${i}`, style: styles.feedbackListItem }, `${i + 1}. ${s}`)
+            ),
+          ]
+          : []),
+        ...(feedbackSections?.tips && feedbackSections.tips.length > 0
+          ? [
+            React.createElement(Text, { key: 'tips-heading', style: styles.feedbackSubHeading }, 'Tips:'),
+            ...feedbackSections.tips.map((s: string, i: number) =>
+              React.createElement(Text, { key: `tip-${i}`, style: styles.feedbackListItem }, `${i + 1}. ${s}`)
+            ),
+          ]
+          : []),
+        // Fallback: if no feedbackSections, show the plain feedback text
+        ...(!feedbackSections || (!feedbackSections.strengths?.length && !feedbackSections.improvements?.length && !feedbackSections.tips?.length)
+          ? [React.createElement(Text, { key: 'fb-text', style: styles.text }, feedback || 'No feedback available')]
+          : []),
       ),
 
       questionsSection,
@@ -206,14 +262,17 @@ export async function POST(req: NextRequest) {
       feedback,
       resumeAnalysis,
       reportType,
+      performanceSummary: data.performanceSummary ?? null,
+      feedbackSections: data.feedbackSections ?? null,
     });
 
-    const pdfBuffer = await pdf(doc).toBuffer();
+    const pdfBuffer = await renderToBuffer(doc);
 
-    return new NextResponse(pdfBuffer, {
+    return new Response(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": "attachment; filename=Interview_Feedback_Report.pdf",
+        "Content-Disposition": `attachment; filename="Vulcan_Prep_Report.pdf"`,
+        "Content-Length": pdfBuffer.length.toString(),
       },
     });
   } catch (error) {
