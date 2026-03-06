@@ -201,3 +201,9 @@ export const getInterviewById = (interviewId: string) =>
 export const deleteInterview = (interviewId: string) =>
   adminApiClient.delete(`/interviews/${interviewId}`);
 
+// Coupon APIs
+export const getAllCoupons = () => adminApiClient.get("/admin/coupons");
+export const createCoupon = (data: any) => adminApiClient.post("/admin/coupons", data);
+export const toggleCouponStatus = (couponId: string) => adminApiClient.patch(`/admin/coupons/${couponId}`);
+export const deleteCoupon = (couponId: string) => adminApiClient.delete(`/admin/coupons/${couponId}`);
+
